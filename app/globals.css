@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8faf9;
+  --foreground: #1a2e26;
+  --primary: #1D9E75;
+  --primary-dark: #157a5a;
+  --primary-light: #e6f7f1;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@media print {
+  @page {
+    margin: 1.5cm 2cm;
+    size: A4 portrait;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 13pt;
+    font-family: Georgia, serif;
+  }
+
+  .print\:hidden,
+  header,
+  button {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-card {
+    border: 1pt solid #ccc !important;
+    background: white !important;
+    page-break-inside: avoid;
+    margin-bottom: 1.2cm;
+    padding: 0.6cm 0.8cm;
+    border-radius: 0;
+  }
+
+  .print-card * {
+    color: black !important;
+    background: white !important;
+  }
+
+  a {
+    color: black !important;
+    text-decoration: none;
+  }
+}
