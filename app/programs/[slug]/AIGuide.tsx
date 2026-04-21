@@ -50,29 +50,18 @@ function isValidGuide(g: Partial<GuideContent>): g is GuideContent {
   return !!(g.callScript && g.documents?.length);
 }
 
-// Build a fresh empty draft
-function emptyDraft(): Partial<GuideContent> {
-  return {};
-}
-
 function AccordionItem({
   sectionKey,
   value,
-  streamingLine,
-  isStreaming,
   isOpen,
   onToggle,
 }: {
   sectionKey: SectionKey;
-  value: string | string[] | undefined;
-  streamingLine: string;
-  isStreaming: boolean;
+  value: string | string[];
   isOpen: boolean;
   onToggle: () => void;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
-  const hasContent = Array.isArray(value) ? value.length > 0 : !!value;
-  const showCursor = isStreaming;
 
   return (
     <div className="bg-white">
@@ -83,9 +72,6 @@ function AccordionItem({
       >
         <span className="text-lg">{ICONS[sectionKey]}</span>
         <span className="flex-1 font-semibold text-gray-900">{TITLES[sectionKey]}</span>
-        {isStreaming && (
-          <span className="text-xs text-[#1D9E75] font-medium animate-pulse mr-2">generating…</span>
-        )}
         <svg
           className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
           fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -102,7 +88,7 @@ function AccordionItem({
         <div className="px-6 pb-5">
           {LIST_SECTIONS.has(sectionKey) ? (
             <ul className="space-y-2">
-              {(value as string[] | undefined ?? []).map((item, i) => (
+              {(value as string[]).map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-gray-700">
                   <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-[#e6f7f1] text-[#1D9E75] text-xs font-bold flex items-center justify-center">
                     {i + 1}
@@ -110,27 +96,29 @@ function AccordionItem({
                   {item}
                 </li>
               ))}
-              {isStreaming && streamingLine && (
-                <li className="flex items-start gap-2 text-gray-400 italic">
-                  <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-400 text-xs font-bold flex items-center justify-center">
-                    {(value as string[] | undefined ?? []).length + 1}
-                  </span>
-                  {streamingLine}<span className="animate-pulse">▌</span>
-                </li>
-              )}
             </ul>
           ) : (
-            <p className="text-gray-700 leading-relaxed">
-              {(value as string | undefined) ?? ""}
-              {isStreaming && streamingLine && (
-                <span className="text-gray-400"> {streamingLine}<span className="animate-pulse">▌</span></span>
-              )}
-              {isStreaming && !streamingLine && hasContent && (
-                <span className="animate-pulse">▌</span>
-              )}
-            </p>
+            <p className="text-gray-700 leading-relaxed">{value as string}</p>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingIndicator() {
+  return (
+    <div className="mt-10">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xl">✨</span>
+        <h2 className="text-2xl font-bold text-gray-900">Your Complete Guide</h2>
+      </div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center gap-4">
+        <svg className="w-5 h-5 text-[#1D9E75] animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        <p className="text-gray-500 text-sm">Generating your personalized guide…</p>
       </div>
     </div>
   );
@@ -151,12 +139,8 @@ export default function AIGuide(props: AIGuideProps) {
   const { slug, programName, description, whoQualifies, phoneNumber, applyUrl, potentialBenefit, category } = props;
 
   const [content, setContent] = useState<GuideContent | null>(null);
-  const [draft, setDraft] = useState<Partial<GuideContent>>(emptyDraft());
-  const [streamingSection, setStreamingSection] = useState<SectionKey | null>(null);
-  const [streamingLine, setStreamingLine] = useState("");
+  const [loading, setLoading] = useState(true);
   const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set());
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState(false);
 
   function toggleSection(key: SectionKey) {
     setOpenSections((prev) => {
@@ -185,8 +169,8 @@ export default function AIGuide(props: AIGuideProps) {
           const decoder = new TextDecoder();
 
           while (true) {
-            const { done: streamDone, value } = await reader.read();
-            if (streamDone) break;
+            const { done, value } = await reader.read();
+            if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split("\n");
@@ -199,9 +183,6 @@ export default function AIGuide(props: AIGuideProps) {
               if (markerKey) {
                 currentSection = markerKey;
                 live[markerKey] = LIST_SECTIONS.has(markerKey) ? ([] as never) : ("" as never);
-                setStreamingSection(markerKey);
-                setStreamingLine("");
-                setOpenSections((prev) => new Set([...prev, markerKey]));
               } else if (currentSection) {
                 if (LIST_SECTIONS.has(currentSection)) {
                   const item = trimmed.replace(/^[•\-*]\s*/, "");
@@ -210,12 +191,7 @@ export default function AIGuide(props: AIGuideProps) {
                   const existing = (live as Record<string, string>)[currentSection];
                   (live as Record<string, string>)[currentSection] = existing ? existing + " " + trimmed : trimmed;
                 }
-                setStreamingLine("");
-                setDraft({ ...live });
               }
-            }
-            if (currentSection && buffer.trim()) {
-              setStreamingLine(buffer.trim().replace(/^[•\-*]\s*/, ""));
             }
           }
 
@@ -229,18 +205,15 @@ export default function AIGuide(props: AIGuideProps) {
               const existing = (live as Record<string, string>)[currentSection];
               (live as Record<string, string>)[currentSection] = existing ? existing + " " + trimmed : trimmed;
             }
-            setDraft({ ...live });
           }
 
           if (isValidGuide(live)) {
             localStorage.setItem(lsKey, JSON.stringify(live));
             setContent(live as GuideContent);
-          } else {
-            setError(true);
           }
         })
-        .catch(() => setError(true))
-        .finally(() => { setStreamingSection(null); setStreamingLine(""); setDone(true); });
+        .catch(() => { /* silently hide on error */ })
+        .finally(() => setLoading(false));
     }
 
     async function load() {
@@ -249,7 +222,7 @@ export default function AIGuide(props: AIGuideProps) {
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          if (isValidGuide(parsed)) { setContent(parsed); setDone(true); return; }
+          if (isValidGuide(parsed)) { setContent(parsed); setLoading(false); return; }
           localStorage.removeItem(lsKey);
         } catch { localStorage.removeItem(lsKey); }
       }
@@ -262,7 +235,7 @@ export default function AIGuide(props: AIGuideProps) {
           if (isValidGuide(dbContent)) {
             localStorage.setItem(lsKey, JSON.stringify(dbContent));
             setContent(dbContent);
-            setDone(true);
+            setLoading(false);
             return;
           }
         }
@@ -275,15 +248,8 @@ export default function AIGuide(props: AIGuideProps) {
     load();
   }, [slug, programName, description, whoQualifies, phoneNumber, applyUrl, potentialBenefit, category]);
 
-  if (error) return null;
-
-  const display = content ?? draft;
-  const hasAnyContent = SECTION_ORDER.some((k) => {
-    const v = display[k];
-    return Array.isArray(v) ? v.length > 0 : !!v;
-  });
-
-  if (!hasAnyContent && done) return null;
+  if (loading) return <LoadingIndicator />;
+  if (!content) return null;
 
   return (
     <div className="mt-10">
@@ -294,24 +260,15 @@ export default function AIGuide(props: AIGuideProps) {
       </div>
 
       <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
-        {SECTION_ORDER.map((key) => {
-          const value = display[key];
-          const hasValue = Array.isArray(value) ? value.length > 0 : !!value;
-          const isStreaming = streamingSection === key;
-          if (!hasValue && !isStreaming) return null;
-
-          return (
-            <AccordionItem
-              key={key}
-              sectionKey={key}
-              value={value}
-              streamingLine={isStreaming ? streamingLine : ""}
-              isStreaming={isStreaming}
-              isOpen={openSections.has(key)}
-              onToggle={() => toggleSection(key)}
-            />
-          );
-        })}
+        {SECTION_ORDER.map((key) => (
+          <AccordionItem
+            key={key}
+            sectionKey={key}
+            value={content[key]}
+            isOpen={openSections.has(key)}
+            onToggle={() => toggleSection(key)}
+          />
+        ))}
       </div>
     </div>
   );
