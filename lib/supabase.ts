@@ -17,6 +17,7 @@ export type Program = {
   eligibility_rules: Record<string, unknown>;
   benefit_value: number;
   states: string[] | null;
+  slug: string | null;
   is_active: boolean;
   created_at: string;
 };
