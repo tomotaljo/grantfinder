@@ -18,3 +18,48 @@ export type Program = {
   is_active: boolean;
   created_at: string;
 };
+
+export type QuizAnswers = {
+  state: string;
+  ageRange: string;
+  income: string;
+  situation: string[];
+};
+
+// Map quiz income range strings to an upper-bound monthly dollar value
+function incomeToMonthlyDollars(range: string): number {
+  const map: Record<string, number> = {
+    "0_1000":    1000,
+    "1001_2000": 2000,
+    "2001_3000": 3000,
+    "3001_4500": 4500,
+    "4501_6000": 6000,
+    "6001_plus": 999999,
+  };
+  return map[range] ?? 999999;
+}
+
+// Map quiz age range strings to a representative numeric age
+function ageRangeToNumber(range: string): number {
+  const map: Record<string, number> = {
+    "under_18": 17,
+    "18_24":    21,
+    "25_34":    30,
+    "35_49":    42,
+    "50_64":    57,
+    "65_plus":  70,
+  };
+  return map[range] ?? 30;
+}
+
+export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Program[]> {
+  const { data, error } = await supabase.rpc("get_eligible_programs", {
+    p_state:          answers.state || null,
+    p_monthly_income: incomeToMonthlyDollars(answers.income),
+    p_age:            ageRangeToNumber(answers.ageRange),
+    p_situation:      answers.situation,
+  });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}

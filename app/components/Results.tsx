@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase, type Program } from "@/lib/supabase";
+import { fetchEligiblePrograms, type Program, type QuizAnswers } from "@/lib/supabase";
 
 const SITE_NAME = "BenefitsFinder";
 
 interface ResultsProps {
   onRestart: () => void;
-  state: string;
+  answers: QuizAnswers;
 }
 
 function PrintHeader({ state }: { state: string }) {
@@ -113,35 +113,23 @@ function LoadingSkeleton() {
   );
 }
 
-export default function Results({ onRestart, state }: ResultsProps) {
+export default function Results({ onRestart, answers }: ResultsProps) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchPrograms() {
-      const { data, error } = await supabase
-        .from("programs")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at");
-
-      if (error) {
-        setError("Could not load programs. Please try again.");
-      } else {
-        setPrograms(data ?? []);
-      }
-      setLoading(false);
-    }
-
-    fetchPrograms();
-  }, []);
+    fetchEligiblePrograms(answers)
+      .then(setPrograms)
+      .catch(() => setError("Could not load programs. Please try again."))
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePrint = () => window.print();
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <PrintHeader state={state} />
+      <PrintHeader state={answers.state} />
 
       {/* Header */}
       <div className="text-center mb-8">
@@ -155,7 +143,7 @@ export default function Results({ onRestart, state }: ResultsProps) {
           {loading ? "Finding programs for you…" : `You may qualify for ${programs.length} program${programs.length !== 1 ? "s" : ""}`}
         </h1>
         <p className="text-lg text-gray-500">
-          Based on your answers{state ? ` in ${state}` : ""}. Review each program below and apply today.
+          Based on your answers{answers.state ? ` in ${answers.state}` : ""}. Review each program below and apply today.
         </p>
       </div>
 

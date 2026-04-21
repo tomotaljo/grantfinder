@@ -10,16 +10,13 @@ import Step5Income from "./steps/Step5Income";
 import Step6Situation from "./steps/Step6Situation";
 import Step7Enrolled from "./steps/Step7Enrolled";
 import Results from "./Results";
+import type { QuizAnswers } from "@/lib/supabase";
 
 const TOTAL_STEPS = 7;
 
-interface Answers {
-  state: string;
+interface Answers extends QuizAnswers {
   applyingFor: string;
-  ageRange: string;
   householdSize: string;
-  income: string;
-  situation: string[];
   enrolled: string[];
 }
 
@@ -53,7 +50,7 @@ export default function Quiz() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-8 sm:py-12">
-          <Results onRestart={restart} state={answers.state} />
+          <Results onRestart={restart} answers={answers} />
         </main>
       </div>
     );
