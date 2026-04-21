@@ -132,28 +132,22 @@ export default async function ProgramPage({ params }: Props) {
           </div>
 
           {/* How to apply */}
-          <div style={{textAlign: 'center', padding: '1rem'}}>
-            <h3 style={{marginBottom: '1rem', fontWeight: '600'}}>
-              How to Apply
-            </h3>
-            <div style={{display: 'inline-flex', flexDirection: 'column',
-              gap: '12px', width: '100%', maxWidth: '360px',
-              margin: '0 auto'}}>
-              <a href={program.apply_url} target="_blank"
-                style={{display: 'block', width: '100%', boxSizing: 'border-box',
-                padding: '12px 24px', backgroundColor: '#1D9E75',
-                color: 'white', borderRadius: '8px',
-                textAlign: 'center', textDecoration: 'none',
-                fontWeight: '500', whiteSpace: 'nowrap'}}>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-5 text-center">How to Apply</h2>
+            <div className="grid gap-3 mx-auto" style={{maxWidth: '380px'}}>
+              <a
+                href={program.apply_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 bg-[#1D9E75] hover:bg-[#157a5a] text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+              >
                 Apply Online ↗
               </a>
-              <a href={`tel:${program.phone_number}`}
-                style={{display: 'block', width: '100%', boxSizing: 'border-box',
-                padding: '12px 24px', border: '2px solid #1D9E75',
-                color: '#1D9E75', borderRadius: '8px',
-                textAlign: 'center', textDecoration: 'none',
-                fontWeight: '500', whiteSpace: 'nowrap'}}>
-                📞 {program.phone_number}
+              <a
+                href={`tel:${program.phone_number.replace(/-/g, "")}`}
+                className="flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold py-3 px-6 rounded-xl transition-colors"
+              >
+                📞&nbsp;{program.phone_number.replace(/-/g, "\u2011")}
               </a>
             </div>
           </div>
