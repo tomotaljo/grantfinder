@@ -4,18 +4,19 @@ import { createClient } from "@supabase/supabase-js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Service-role client — can write to program_guides bypassing RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
 
-// Anon client — used for the cache read (public row-level policy)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 const SYSTEM_PROMPT = `You are a benefits navigator helping Americans — especially seniors, veterans, and low-income families — understand government assistance programs. Write in plain, warm, conversational English. Avoid jargon. Use short sentences. Assume the reader may be over 65 or not tech-savvy. Be specific and actionable.
 
@@ -26,7 +27,10 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug");
   if (!slug) return NextResponse.json({ error: "Missing slug" }, { status: 400 });
 
-  const { data } = await supabase
+  const db = getSupabase();
+  if (!db) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const { data } = await db
     .from("program_guides")
     .select("content, generated_at")
     .eq("program_slug", slug)
@@ -153,10 +157,13 @@ A word-for-word phone script (3-5 sentences) the person can read when they call.
 
         // Save to Supabase if we have a slug and valid content
         if (slug && parsed.callScript) {
-          await supabaseAdmin.from("program_guides").upsert(
-            { program_slug: slug, content: parsed, generated_at: new Date().toISOString() },
-            { onConflict: "program_slug" }
-          );
+          const admin = getSupabaseAdmin();
+          if (admin) {
+            await admin.from("program_guides").upsert(
+              { program_slug: slug, content: parsed, generated_at: new Date().toISOString() },
+              { onConflict: "program_slug" }
+            );
+          }
         }
       } catch (err) {
         console.error("Guide generation error:", err);
@@ -180,11 +187,10 @@ export async function DELETE(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug");
   if (!slug) return NextResponse.json({ error: "Missing slug" }, { status: 400 });
 
-  const { error } = await supabaseAdmin
-    .from("program_guides")
-    .delete()
-    .eq("program_slug", slug);
+  const admin = getSupabaseAdmin();
+  if (!admin) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
+  const { error } = await admin.from("program_guides").delete().eq("program_slug", slug);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
