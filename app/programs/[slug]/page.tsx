@@ -132,30 +132,28 @@ export default async function ProgramPage({ params }: Props) {
           </div>
 
           {/* How to apply */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">How to Apply</h2>
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <a
-                href={program.apply_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 bg-[#1D9E75] hover:bg-[#157a5a] text-white font-semibold px-5 py-3 rounded-xl transition-colors whitespace-nowrap"
-              >
-                Apply Online
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+          <div style={{textAlign: 'center', padding: '1rem'}}>
+            <h3 style={{marginBottom: '1rem', fontWeight: '600'}}>
+              How to Apply
+            </h3>
+            <div style={{display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: '12px', maxWidth: '300px',
+              margin: '0 auto'}}>
+              <a href={program.apply_url} target="_blank"
+                style={{display: 'block', width: '100%',
+                padding: '12px 24px', backgroundColor: '#1D9E75',
+                color: 'white', borderRadius: '8px',
+                textAlign: 'center', textDecoration: 'none',
+                fontWeight: '500'}}>
+                Apply Online ↗
               </a>
-              <a
-                href={`tel:${program.phone_number.replace(/-/g, "")}`}
-                className="flex-1 flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-5 py-3 rounded-xl transition-colors whitespace-nowrap"
-              >
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                Call {program.phone_number}
+              <a href={`tel:${program.phone_number}`}
+                style={{display: 'block', width: '100%',
+                padding: '12px 24px', border: '2px solid #1D9E75',
+                color: '#1D9E75', borderRadius: '8px',
+                textAlign: 'center', textDecoration: 'none',
+                fontWeight: '500'}}>
+                📞 {program.phone_number}
               </a>
             </div>
           </div>
