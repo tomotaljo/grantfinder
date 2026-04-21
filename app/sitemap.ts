@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mypublicaid.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mypublicaid.org";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { data: programs } = await supabase

@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import type { Program } from "@/lib/supabase";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mypublicaid.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mypublicaid.org";
 
 interface Props {
   params: Promise<{ slug: string }>;
