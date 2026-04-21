@@ -15,6 +15,7 @@ export type Program = {
   phone_number: string;
   apply_url: string;
   eligibility_rules: Record<string, unknown>;
+  benefit_value: number;
   is_active: boolean;
   created_at: string;
 };

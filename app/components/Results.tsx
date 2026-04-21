@@ -4,17 +4,25 @@ import { useEffect, useState } from "react";
 import { fetchEligiblePrograms, type Program, type QuizAnswers } from "@/lib/supabase";
 
 const SITE_NAME = "BenefitsFinder";
+const TOP_PICKS_COUNT = 3;
+const INITIAL_VISIBLE = 5;
 
-interface ResultsProps {
-  onRestart: () => void;
-  answers: QuizAnswers;
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function groupByCategory(programs: Program[]): [string, Program[]][] {
+  const map = new Map<string, Program[]>();
+  for (const p of programs) {
+    if (!map.has(p.category)) map.set(p.category, []);
+    map.get(p.category)!.push(p);
+  }
+  return Array.from(map.entries());
 }
+
+// ─── sub-components ─────────────────────────────────────────────────────────
 
 function PrintHeader({ state }: { state: string }) {
   const date = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+    year: "numeric", month: "long", day: "numeric",
   });
   return (
     <div className="print-only hidden mb-6 pb-4" style={{ borderBottom: "2pt solid black" }}>
@@ -27,19 +35,37 @@ function PrintHeader({ state }: { state: string }) {
   );
 }
 
-function ProgramCard({ prog }: { prog: Program }) {
+function CategoryHeading({ label }: { label: string }) {
   return (
-    <div className="print-card bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="flex items-center gap-3 mt-2">
+      <span className="text-sm font-bold uppercase tracking-widest text-gray-400">{label}</span>
+      <div className="flex-1 h-px bg-gray-200" />
+    </div>
+  );
+}
+
+function ProgramCard({ prog, isTopPick = false }: { prog: Program; isTopPick?: boolean }) {
+  return (
+    <div className={`print-card bg-white rounded-2xl border shadow-sm overflow-hidden transition-all
+      ${isTopPick ? "border-[#1D9E75]" : "border-gray-100"}`}>
       <div className="p-6 sm:p-7">
         <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
+            {isTopPick && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                Top Pick
+              </span>
+            )}
             <span className="text-sm font-semibold uppercase tracking-wide text-[#1D9E75] bg-[#e6f7f1] px-3 py-1 rounded-full">
               {prog.category}
             </span>
-            <h3 className="text-xl font-bold text-gray-900 mt-3 leading-snug">{prog.name}</h3>
           </div>
         </div>
 
+        <h3 className="text-xl font-bold text-gray-900 mb-3 leading-snug">{prog.name}</h3>
         <p className="text-gray-600 text-base leading-relaxed mb-5">{prog.description}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
@@ -53,7 +79,6 @@ function ProgramCard({ prog }: { prog: Program }) {
           </div>
         </div>
 
-        {/* CTA buttons — screen only */}
         <div className="flex flex-col sm:flex-row gap-3 print:hidden">
           <a
             href={prog.apply_url}
@@ -67,7 +92,6 @@ function ProgramCard({ prog }: { prog: Program }) {
                 d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
           </a>
-
           <a
             href={`tel:${prog.phone_number.replace(/-/g, "")}`}
             className="inline-flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-5 py-3 rounded-xl transition-colors text-base"
@@ -80,7 +104,6 @@ function ProgramCard({ prog }: { prog: Program }) {
           </a>
         </div>
 
-        {/* Print-only contact block */}
         <div className="print-only hidden" style={{ marginTop: "0.4cm", fontSize: "12pt", lineHeight: "1.8" }}>
           <div><strong>Phone:</strong> {prog.phone_number}</div>
           <div><strong>Website:</strong> {prog.apply_url}</div>
@@ -113,10 +136,18 @@ function LoadingSkeleton() {
   );
 }
 
+// ─── main component ──────────────────────────────────────────────────────────
+
+interface ResultsProps {
+  onRestart: () => void;
+  answers: QuizAnswers;
+}
+
 export default function Results({ onRestart, answers }: ResultsProps) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     fetchEligiblePrograms(answers)
@@ -125,13 +156,24 @@ export default function Results({ onRestart, answers }: ResultsProps) {
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // DB returns programs sorted by benefit_value DESC — slice directly
+  const topPicks = programs.slice(0, Math.min(TOP_PICKS_COUNT, programs.length));
+  const remaining = programs.slice(topPicks.length);
+
+  // How many of `remaining` are visible before "show more"
+  const initialRemaining = Math.max(0, INITIAL_VISIBLE - topPicks.length);
+  const visibleRemaining = showAll ? remaining : remaining.slice(0, initialRemaining);
+  const hiddenCount = remaining.length - initialRemaining;
+
+  const groupedRemaining = groupByCategory(visibleRemaining);
+
   const handlePrint = () => window.print();
 
   return (
     <div className="w-full max-w-2xl mx-auto">
       <PrintHeader state={answers.state} />
 
-      {/* Header */}
+      {/* Page header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#e6f7f1] mb-4">
           <svg className="w-8 h-8 text-[#1D9E75]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,14 +182,16 @@ export default function Results({ onRestart, answers }: ResultsProps) {
           </svg>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-          {loading ? "Finding programs for you…" : `You may qualify for ${programs.length} program${programs.length !== 1 ? "s" : ""}`}
+          {loading
+            ? "Finding programs for you…"
+            : `You may qualify for ${programs.length} program${programs.length !== 1 ? "s" : ""}`}
         </h1>
         <p className="text-lg text-gray-500">
           Based on your answers{answers.state ? ` in ${answers.state}` : ""}. Review each program below and apply today.
         </p>
       </div>
 
-      {/* Program cards */}
+      {/* Content */}
       <div className="mb-8">
         {loading && <LoadingSkeleton />}
 
@@ -157,11 +201,54 @@ export default function Results({ onRestart, answers }: ResultsProps) {
           </div>
         )}
 
-        {!loading && !error && (
-          <div className="flex flex-col gap-5">
-            {programs.map((prog) => (
-              <ProgramCard key={prog.id} prog={prog} />
+        {!loading && !error && programs.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg font-medium mb-2">No programs matched your answers.</p>
+            <p className="text-base">Try adjusting your responses or contact your local benefits office.</p>
+          </div>
+        )}
+
+        {!loading && !error && programs.length > 0 && (
+          <div className="flex flex-col gap-3">
+
+            {/* Top Picks section */}
+            <div className="flex items-center gap-3 mb-1">
+              <svg className="w-5 h-5 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <span className="text-sm font-bold uppercase tracking-widest text-gray-400">Top Picks</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            <div className="flex flex-col gap-5 mb-4">
+              {topPicks.map((prog) => (
+                <ProgramCard key={prog.id} prog={prog} isTopPick />
+              ))}
+            </div>
+
+            {/* Remaining programs grouped by category */}
+            {visibleRemaining.length > 0 && groupedRemaining.map(([category, progs]) => (
+              <div key={category} className="flex flex-col gap-5">
+                <CategoryHeading label={category} />
+                {progs.map((prog) => (
+                  <ProgramCard key={prog.id} prog={prog} />
+                ))}
+              </div>
             ))}
+
+            {/* Show more button */}
+            {!showAll && hiddenCount > 0 && (
+              <button
+                onClick={() => setShowAll(true)}
+                className="mt-2 w-full py-4 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500 font-semibold hover:border-[#1D9E75] hover:text-[#1D9E75] hover:bg-[#f0fbf7] transition-all text-base flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Show {hiddenCount} more program{hiddenCount !== 1 ? "s" : ""}
+              </button>
+            )}
+
           </div>
         )}
       </div>
