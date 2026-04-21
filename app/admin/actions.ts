@@ -50,3 +50,8 @@ export async function toggleActive(id: string, active: boolean) {
   await supabaseAdmin.from("programs").update({ is_active: active }).eq("id", id);
   revalidatePath("/admin");
 }
+
+export async function clearGuideCache(slug: string) {
+  await supabaseAdmin.from("program_guides").delete().eq("program_slug", slug);
+  revalidatePath("/admin");
+}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { toggleActive } from "./actions";
+import { toggleActive, clearGuideCache } from "./actions";
 import type { Program } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +20,14 @@ function StatusBadge({ active }: { active: boolean }) {
 }
 
 export default async function AdminPage() {
-  const { data: programs } = await supabaseAdmin
-    .from("programs")
-    .select("*")
-    .order("benefit_value", { ascending: false });
+  const [{ data: programs }, { data: guides }] = await Promise.all([
+    supabaseAdmin.from("programs").select("*").order("benefit_value", { ascending: false }),
+    supabaseAdmin.from("program_guides").select("program_slug, generated_at"),
+  ]);
+
+  const cachedSlugs = new Map(
+    (guides ?? []).map((g: { program_slug: string; generated_at: string }) => [g.program_slug, g.generated_at])
+  );
 
   const rows = (programs ?? []) as Program[];
 
@@ -55,6 +59,7 @@ export default async function AdminPage() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">State</th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-600">Benefit Value</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">AI Cache</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -74,6 +79,21 @@ export default async function AdminPage() {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge active={prog.is_active} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {prog.slug && cachedSlugs.has(prog.slug) ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="inline-flex items-center gap-1 text-xs text-[#157a5a] font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] inline-block" />
+                          Cached
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(cachedSlugs.get(prog.slug)!).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
@@ -100,6 +120,21 @@ export default async function AdminPage() {
                           {prog.is_active ? "Deactivate" : "Activate"}
                         </button>
                       </form>
+                      {prog.slug && cachedSlugs.has(prog.slug) && (
+                        <form
+                          action={async () => {
+                            "use server";
+                            await clearGuideCache(prog.slug!);
+                          }}
+                        >
+                          <button
+                            type="submit"
+                            className="text-xs font-medium text-orange-500 border-orange-200 hover:bg-orange-50 px-3 py-1.5 rounded-lg border transition-colors"
+                          >
+                            Clear Cache
+                          </button>
+                        </form>
+                      )}
                     </div>
                   </td>
                 </tr>
