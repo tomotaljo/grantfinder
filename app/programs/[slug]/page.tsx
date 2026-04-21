@@ -131,7 +131,7 @@ export default async function ProgramPage({ params }: Props) {
           {/* How to apply */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">How to Apply</h2>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href={program.apply_url}
                 target="_blank"
