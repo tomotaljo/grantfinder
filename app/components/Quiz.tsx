@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import ProgressBar from "./ProgressBar";
 import Step1State from "./steps/Step1State";
 import Step2ApplyingFor from "./steps/Step2ApplyingFor";
@@ -34,6 +35,18 @@ export default function Quiz() {
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
   const [answers, setAnswers] = useState<Answers>(DEFAULT);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("resume") !== "1") return;
+    try {
+      const saved = localStorage.getItem("quiz-answers");
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as Answers;
+      setAnswers(parsed);
+      setDone(true);
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const next = () => {
     if (step === TOTAL_STEPS) { setDone(true); return; }

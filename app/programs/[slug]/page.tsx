@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import type { Program } from "@/lib/supabase";
 import AIGuide from "./AIGuide";
+import BackToResults from "./BackToResults";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mypublicaid.org";
 
@@ -98,6 +99,8 @@ export default async function ProgramPage({ params }: Props) {
         </header>
 
         <main className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
+          <BackToResults />
+
           {/* Breadcrumb */}
           <nav className="text-sm text-gray-400 mb-6">
             <Link href="/" className="hover:text-[#1D9E75]">Home</Link>

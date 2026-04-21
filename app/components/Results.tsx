@@ -256,6 +256,9 @@ export default function Results({ onRestart, answers }: ResultsProps) {
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
+    // Save answers so program guide pages can link back to these results
+    localStorage.setItem("quiz-answers", JSON.stringify(answers));
+
     fetchEligiblePrograms(answers)
       .then(setPrograms)
       .catch(() => setError("Could not load programs. Please try again."))
