@@ -136,23 +136,23 @@ export default async function ProgramPage({ params }: Props) {
             <h3 style={{marginBottom: '1rem', fontWeight: '600'}}>
               How to Apply
             </h3>
-            <div style={{display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: '12px', maxWidth: '300px',
+            <div style={{display: 'inline-flex', flexDirection: 'column',
+              gap: '12px', width: '100%', maxWidth: '360px',
               margin: '0 auto'}}>
               <a href={program.apply_url} target="_blank"
-                style={{display: 'block', width: '100%',
+                style={{display: 'block', width: '100%', boxSizing: 'border-box',
                 padding: '12px 24px', backgroundColor: '#1D9E75',
                 color: 'white', borderRadius: '8px',
                 textAlign: 'center', textDecoration: 'none',
-                fontWeight: '500'}}>
+                fontWeight: '500', whiteSpace: 'nowrap'}}>
                 Apply Online ↗
               </a>
               <a href={`tel:${program.phone_number}`}
-                style={{display: 'block', width: '100%',
+                style={{display: 'block', width: '100%', boxSizing: 'border-box',
                 padding: '12px 24px', border: '2px solid #1D9E75',
                 color: '#1D9E75', borderRadius: '8px',
                 textAlign: 'center', textDecoration: 'none',
-                fontWeight: '500'}}>
+                fontWeight: '500', whiteSpace: 'nowrap'}}>
                 📞 {program.phone_number}
               </a>
             </div>
