@@ -132,26 +132,26 @@ export default async function ProgramPage({ params }: Props) {
           </div>
 
           {/* How to apply */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6 text-center">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">How to Apply</h2>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mx-auto" style={{ maxWidth: 440 }}>
+            <div className="flex gap-3 max-w-sm mx-auto">
               <a
                 href={program.apply_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#1D9E75] hover:bg-[#157a5a] text-white font-semibold px-5 py-3 rounded-xl transition-colors w-full"
+                className="flex-1 flex items-center justify-center gap-2 bg-[#1D9E75] hover:bg-[#157a5a] text-white font-semibold px-4 py-3 rounded-xl transition-colors text-sm"
               >
                 Apply Online
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </a>
               <a
                 href={`tel:${program.phone_number.replace(/-/g, "")}`}
-                className="flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-5 py-3 rounded-xl transition-colors w-full"
+                className="flex-1 flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-4 py-3 rounded-xl transition-colors text-sm"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
@@ -189,6 +189,11 @@ export default async function ProgramPage({ params }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
+            <div className="mt-4">
+              <Link href="/" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                Start Over
+              </Link>
+            </div>
           </div>
         </main>
       </div>
