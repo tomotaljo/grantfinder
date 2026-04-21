@@ -53,6 +53,26 @@ function ageRangeToNumber(range: string): number {
   return map[range] ?? 30;
 }
 
+export async function subscribeToUpdates(
+  email: string,
+  answers: QuizAnswers
+): Promise<{ alreadySubscribed: boolean }> {
+  const { error } = await supabase.from("subscribers").insert({
+    email,
+    state:        answers.state || null,
+    age_range:    answers.ageRange || null,
+    income_range: answers.income || null,
+    situation:    answers.situation,
+  });
+
+  if (!error) return { alreadySubscribed: false };
+
+  // Postgres unique violation code — email already exists, treat as success
+  if (error.code === "23505") return { alreadySubscribed: true };
+
+  throw new Error(error.message);
+}
+
 export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Program[]> {
   const { data, error } = await supabase.rpc("get_eligible_programs", {
     p_state:          answers.state || null,

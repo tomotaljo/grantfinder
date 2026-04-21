@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchEligiblePrograms, type Program, type QuizAnswers } from "@/lib/supabase";
+import { fetchEligiblePrograms, subscribeToUpdates, type Program, type QuizAnswers } from "@/lib/supabase";
 
 const SITE_NAME = "BenefitsFinder";
 const TOP_PICKS_COUNT = 3;
@@ -138,6 +138,88 @@ function LoadingSkeleton() {
 
 // ─── main component ──────────────────────────────────────────────────────────
 
+// ─── email capture ───────────────────────────────────────────────────────────
+
+function EmailCapture({ answers }: { answers: QuizAnswers }) {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!valid) return;
+    setStatus("submitting");
+    try {
+      await subscribeToUpdates(email, answers);
+      setStatus("success");
+    } catch {
+      setErrorMsg("Something went wrong. Please try again.");
+      setStatus("error");
+    }
+  }
+
+  if (status === "success") {
+    return (
+      <div className="rounded-2xl bg-[#e6f7f1] border border-[#a8e6d0] p-6 text-center print:hidden">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#1D9E75] mb-3">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <p className="text-lg font-bold text-[#157a5a] mb-1">You're on the list!</p>
+        <p className="text-base text-[#1D9E75]">
+          We'll notify you when new programs are added that match your profile.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl bg-gray-50 border border-gray-200 p-6 print:hidden">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-[#e6f7f1] flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg className="w-5 h-5 text-[#1D9E75]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 leading-snug">Get notified about new programs</h3>
+          <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+            We'll let you know when new benefits programs are added that match your profile.
+            No spam, ever. Unsubscribe anytime.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setStatus("idle"); }}
+          placeholder="your@email.com"
+          className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1D9E75] focus:border-transparent bg-white"
+        />
+        <button
+          type="submit"
+          disabled={!valid || status === "submitting"}
+          className="px-6 py-3 rounded-xl bg-[#1D9E75] hover:bg-[#157a5a] text-white font-semibold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+        >
+          {status === "submitting" ? "Saving…" : "Notify Me"}
+        </button>
+      </form>
+
+      {status === "error" && (
+        <p className="text-sm text-red-600 mt-2">{errorMsg}</p>
+      )}
+    </div>
+  );
+}
+
+// ─── main component ───────────────────────────────────────────────────────────
+
 interface ResultsProps {
   onRestart: () => void;
   answers: QuizAnswers;
@@ -252,6 +334,13 @@ export default function Results({ onRestart, answers }: ResultsProps) {
           </div>
         )}
       </div>
+
+      {/* Email capture */}
+      {!loading && !error && programs.length > 0 && (
+        <div className="mb-6">
+          <EmailCapture answers={answers} />
+        </div>
+      )}
 
       {/* Disclaimer */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-base text-amber-800">
