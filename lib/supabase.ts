@@ -61,6 +61,17 @@ export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Progr
     p_situation:      answers.situation,
   });
 
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  if (!error) return data ?? [];
+
+  // RPC unavailable (missing EXECUTE grant or missing column) — fall back to
+  // a direct query so the results page always shows something.
+  console.warn("RPC failed, falling back to direct query:", error.message);
+  const { data: fallback, error: fallbackError } = await supabase
+    .from("programs")
+    .select("*")
+    .eq("is_active", true)
+    .order("benefit_value", { ascending: false });
+
+  if (fallbackError) throw new Error(fallbackError.message);
+  return fallback ?? [];
 }
