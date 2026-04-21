@@ -134,12 +134,12 @@ export default async function ProgramPage({ params }: Props) {
           {/* How to apply */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">How to Apply</h2>
-            <div className="flex gap-3 max-w-sm mx-auto">
+            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <a
                 href={program.apply_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 bg-[#1D9E75] hover:bg-[#157a5a] text-white font-semibold px-4 py-3 rounded-xl transition-colors text-sm"
+                className="flex-1 flex items-center justify-center gap-2 bg-[#1D9E75] hover:bg-[#157a5a] text-white font-semibold px-5 py-3 rounded-xl transition-colors whitespace-nowrap"
               >
                 Apply Online
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,7 +149,7 @@ export default async function ProgramPage({ params }: Props) {
               </a>
               <a
                 href={`tel:${program.phone_number.replace(/-/g, "")}`}
-                className="flex-1 flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-4 py-3 rounded-xl transition-colors text-sm whitespace-nowrap"
+                className="flex-1 flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-5 py-3 rounded-xl transition-colors whitespace-nowrap"
               >
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
