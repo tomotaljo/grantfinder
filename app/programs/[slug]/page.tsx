@@ -149,7 +149,7 @@ export default async function ProgramPage({ params }: Props) {
               </a>
               <a
                 href={`tel:${program.phone_number.replace(/-/g, "")}`}
-                className="flex-1 flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-4 py-3 rounded-xl transition-colors text-sm"
+                className="flex-1 flex items-center justify-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] hover:bg-[#e6f7f1] font-semibold px-4 py-3 rounded-xl transition-colors text-sm whitespace-nowrap"
               >
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
