@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { toggleActive } from "./actions";
 import type { Program } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 function stateLabel(states: string[] | null): string {
   if (!states || states.length === 0) return "Federal";
   return states.join(", ");
