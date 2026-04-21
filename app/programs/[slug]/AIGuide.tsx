@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface GuideContent {
   callScript: string;
@@ -68,6 +68,61 @@ const SECTION_ORDER: (keyof GuideContent)[] = [
   "proTips",
 ];
 
+function AccordionItem({
+  icon,
+  title,
+  value,
+}: {
+  icon: string;
+  title: string;
+  value: string | string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="bg-white">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+        aria-expanded={open}
+      >
+        <span className="text-lg">{icon}</span>
+        <span className="flex-1 font-semibold text-gray-900">{title}</span>
+        <svg
+          className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div
+        ref={bodyRef}
+        className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        style={{ maxHeight: open ? bodyRef.current?.scrollHeight : 0 }}
+      >
+        <div className="px-6 pb-5">
+          {typeof value === "string" ? (
+            <p className="text-gray-700 leading-relaxed">{value}</p>
+          ) : (
+            <ul className="space-y-2">
+              {value.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-gray-700">
+                  <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-[#e6f7f1] text-[#1D9E75] text-xs font-bold flex items-center justify-center">
+                    {i + 1}
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AIGuide({
   slug,
   programName,
@@ -83,13 +138,17 @@ export default function AIGuide({
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const cacheKey = `ai-guide-v1-${slug}`;
+    const cacheKey = `ai-guide-v2-${slug}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       try {
-        setContent(JSON.parse(cached));
-        setLoading(false);
-        return;
+        const parsed = JSON.parse(cached);
+        if (parsed.callScript && parsed.documents) {
+          setContent(parsed);
+          setLoading(false);
+          return;
+        }
+        localStorage.removeItem(cacheKey);
       } catch {
         localStorage.removeItem(cacheKey);
       }
@@ -125,6 +184,7 @@ export default function AIGuide({
         const jsonEnd = fullText.lastIndexOf("}");
         if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found");
         const parsed: GuideContent = JSON.parse(fullText.slice(jsonStart, jsonEnd + 1));
+        if (!parsed.callScript || !parsed.documents) throw new Error("Invalid guide structure");
         localStorage.setItem(cacheKey, JSON.stringify(parsed));
         setContent(parsed);
       })
@@ -140,40 +200,17 @@ export default function AIGuide({
 
   return (
     <div className="mt-10">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-4">
         <span className="text-xl">✨</span>
         <h2 className="text-2xl font-bold text-gray-900">Your Complete Guide</h2>
         <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">AI-generated</span>
       </div>
 
-      <div className="space-y-5">
+      <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
         {SECTION_ORDER.map((key) => {
           const value = content[key];
           if (!value) return null;
-
-          return (
-            <div key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <span>{ICONS[key]}</span>
-                {TITLES[key]}
-              </h3>
-
-              {typeof value === "string" ? (
-                <p className="text-gray-700 leading-relaxed">{value}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {(value as string[]).map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-gray-700">
-                      <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-[#e6f7f1] text-[#1D9E75] text-xs font-bold flex items-center justify-center">
-                        {i + 1}
-                      </span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
+          return <AccordionItem key={key} icon={ICONS[key]} title={TITLES[key]} value={value} />;
         })}
       </div>
     </div>
