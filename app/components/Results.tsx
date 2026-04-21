@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchEligiblePrograms, subscribeToUpdates, type Program, type QuizAnswers } from "@/lib/supabase";
+import { fetchEligiblePrograms, type Program, type QuizAnswers } from "@/lib/supabase";
 
 const SITE_NAME = "BenefitsFinder";
 const TOP_PICKS_COUNT = 3;
@@ -152,13 +152,24 @@ function EmailCapture({ answers }: { answers: QuizAnswers }) {
     if (!valid) return;
     setStatus("submitting");
     try {
-      await subscribeToUpdates(email, answers);
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error ?? "Something went wrong.");
+      }
       setStatus("success");
-    } catch {
-      setErrorMsg("Something went wrong. Please try again.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setStatus("error");
     }
   }
+
+  // suppress unused-var warning — answers kept in props for potential future use
+  void answers;
 
   if (status === "success") {
     return (
