@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import type { Program } from "@/lib/supabase";
+import AIGuide from "./AIGuide";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mypublicaid.org";
 
@@ -156,8 +157,20 @@ export default async function ProgramPage({ params }: Props) {
             </div>
           </div>
 
+          {/* AI Guide */}
+          <AIGuide
+            slug={slug}
+            programName={program.name}
+            description={program.description}
+            whoQualifies={program.who_qualifies}
+            phoneNumber={program.phone_number}
+            applyUrl={program.apply_url}
+            potentialBenefit={program.potential_benefit}
+            category={program.category}
+          />
+
           {/* CTA to quiz */}
-          <div className="bg-[#e6f7f1] border border-[#a8e6d0] rounded-2xl p-6 text-center">
+          <div className="mt-10 bg-[#e6f7f1] border border-[#a8e6d0] rounded-2xl p-6 text-center">
             <h2 className="text-xl font-bold text-gray-900 mb-2">
               Not sure if you qualify?
             </h2>
