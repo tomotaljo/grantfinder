@@ -260,8 +260,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
     fetchEligiblePrograms(answers)
       .then((data) => {
         setPrograms(data);
-        // Default to first category that has programs
-        const cats = Array.from(new Set(data.slice(TOP_PICKS_COUNT).map((p) => p.category)));
+        const cats = Array.from(new Set(data.map((p) => p.category)));
         if (cats.length > 0) setActiveTab(cats[0]);
       })
       .catch(() => setError("Could not load programs. Please try again."))
@@ -270,8 +269,8 @@ export default function Results({ onRestart, answers }: ResultsProps) {
 
   const topPicks = programs.slice(0, Math.min(TOP_PICKS_COUNT, programs.length));
   const remaining = programs.slice(topPicks.length);
-  const categories = Array.from(new Set(remaining.map((p) => p.category)));
-  const tabPrograms = remaining.filter((p) => p.category === activeTab);
+  const categories = Array.from(new Set(programs.map((p) => p.category)));
+  const tabPrograms = programs.filter((p) => p.category === activeTab);
 
   const handlePrint = () => window.print();
 
