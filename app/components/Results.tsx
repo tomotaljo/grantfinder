@@ -335,39 +335,30 @@ export default function Results({ onRestart, answers }: ResultsProps) {
             {categories.length > 0 && (
               <>
                 <div
-                  className="tabs-container print:hidden -mx-4 px-4"
+                  className="print:hidden"
                   style={{
                     display: 'flex',
-                    overflowX: 'auto',
+                    flexWrap: 'wrap',
                     gap: '8px',
                     paddingBottom: '0px',
-                    msOverflowStyle: 'none',
-                    scrollbarWidth: 'none',
-                  } as React.CSSProperties}
+                  }}
                 >
-                  <style>{`
-                    .tabs-container::-webkit-scrollbar {
-                      display: none;
-                    }
-                  `}</style>
-                  <div className="flex gap-2 pb-2" style={{ minWidth: "max-content" }}>
-                    {categories.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setActiveTab(cat)}
-                        className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors flex-shrink-0
-                          ${activeTab === cat
-                            ? "bg-[#1D9E75] border-[#1D9E75] text-white"
-                            : "bg-white border-gray-200 text-gray-600 hover:border-[#1D9E75] hover:text-[#1D9E75]"
-                          }`}
-                      >
-                        {cat}
-                        <span className={`ml-1.5 text-xs font-bold ${activeTab === cat ? "text-white/80" : "text-gray-400"}`}>
-                          {remaining.filter((p) => p.category === cat).length}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveTab(cat)}
+                      className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
+                        ${activeTab === cat
+                          ? "bg-[#1D9E75] border-[#1D9E75] text-white"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-[#1D9E75] hover:text-[#1D9E75]"
+                        }`}
+                    >
+                      {cat}
+                      <span className={`ml-1.5 text-xs font-bold ${activeTab === cat ? "text-white/80" : "text-gray-400"}`}>
+                        {remaining.filter((p) => p.category === cat).length}
+                      </span>
+                    </button>
+                  ))}
                 </div>
 
                 <div className="flex flex-col gap-5 mt-2">
