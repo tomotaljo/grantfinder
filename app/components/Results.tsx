@@ -294,6 +294,16 @@ export default function Results({ onRestart, answers }: ResultsProps) {
         <p className="text-lg text-gray-500">
           Based on your answers{answers.state ? ` in ${answers.state}` : ""}. Review each program below and apply today.
         </p>
+        {!loading && (
+          <div className="mt-4">
+            <button
+              onClick={onRestart}
+              className="text-sm text-gray-400 border border-gray-200 hover:border-gray-300 hover:text-gray-600 px-4 py-1.5 rounded-full transition-colors"
+            >
+              Start Over
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -362,7 +372,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
                         }`}
                       style={{ width: '160px', minWidth: '160px', maxWidth: '160px', textAlign: 'center', justifyContent: 'center', minHeight: '48px' }}
                     >
-                      {cat}
+                      {cat === "Senior & Disability Assistance" ? "Senior Care" : cat}
                       <span className={`ml-1.5 text-xs font-bold ${activeTab === cat ? "text-white/80" : "text-gray-400"}`}>
                         {programs.filter((p) => p.category === cat).length}
                       </span>
