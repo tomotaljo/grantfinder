@@ -71,19 +71,25 @@ function ageRangeToNumber(range: string): number {
 
 export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Program[]> {
   const stateAbbr = STATE_ABBR[answers.state] ?? answers.state || null;
+  const monthlyIncome = incomeToMonthlyDollars(answers.income);
+  const age = ageRangeToNumber(answers.ageRange);
+
+  console.log("[RPC] params →", { p_state: stateAbbr, p_monthly_income: monthlyIncome, p_age: age, p_situation: answers.situation });
 
   const { data, error } = await supabase.rpc("get_eligible_programs", {
     p_state:          stateAbbr,
-    p_monthly_income: incomeToMonthlyDollars(answers.income),
-    p_age:            ageRangeToNumber(answers.ageRange),
+    p_monthly_income: monthlyIncome,
+    p_age:            age,
     p_situation:      answers.situation,
   });
+
+  console.log("[RPC] result →", { count: data?.length, error: error?.message });
 
   if (!error) return data ?? [];
 
   // RPC unavailable (missing EXECUTE grant or missing column) — fall back to
   // a direct query so the results page always shows something.
-  console.warn("RPC failed, falling back to direct query:", error.message);
+  console.warn("[RPC] falling back to direct query:", error.message);
   const { data: fallback, error: fallbackError } = await supabase
     .from("programs")
     .select("*")
