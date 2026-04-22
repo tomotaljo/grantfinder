@@ -5,9 +5,9 @@ import type { Program } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-function stateLabel(states: string[] | null): string {
-  if (!states || states.length === 0) return "Federal";
-  return states.join(", ");
+function stateLabel(state: string | null): string {
+  if (!state) return "Federal";
+  return state;
 }
 
 function StatusBadge({ active }: { active: boolean }) {
@@ -73,7 +73,7 @@ export default async function AdminPage() {
                     {prog.name}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{prog.category}</td>
-                  <td className="px-4 py-3 text-gray-600">{stateLabel(prog.states)}</td>
+                  <td className="px-4 py-3 text-gray-600">{stateLabel(prog.state)}</td>
                   <td className="px-4 py-3 text-right text-gray-700 font-mono">
                     ${prog.benefit_value.toLocaleString()}
                   </td>

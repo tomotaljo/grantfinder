@@ -77,7 +77,7 @@ const input = "w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text
 export default function ProgramForm({ action, program, heading }: Props) {
   const [state, formAction] = useActionState(action, null);
 
-  const defaultState = program?.states?.[0] ?? "federal";
+  const defaultState = program?.state ?? "federal";
 
   return (
     <div>

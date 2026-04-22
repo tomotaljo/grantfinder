@@ -23,7 +23,7 @@ function formToProgram(data: FormData) {
     apply_url:         data.get("apply_url") as string,
     benefit_value:     parseInt(data.get("benefit_value") as string, 10) || 0,
     is_active:         data.get("is_active") === "on",
-    states:            stateVal === "federal" ? null : [stateVal],
+    state:             stateVal === "federal" ? null : stateVal,
     eligibility_rules: {},
   };
 }
