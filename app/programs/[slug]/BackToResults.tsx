@@ -21,10 +21,11 @@ export default function BackToResults() {
   return (
     <Link
       href="/?resume=1"
-      className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-[#1D9E75] transition-colors mb-2"
+      className="inline-flex items-center gap-2 border-2 border-[#1D9E75] text-[#1D9E75] bg-white hover:bg-[#e6f7f1] font-semibold px-4 py-2 rounded-xl transition-colors mb-6"
+      style={{ fontSize: "15px" }}
     >
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
       </svg>
       Back to My Results
     </Link>
