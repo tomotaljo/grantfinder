@@ -5,7 +5,6 @@ import { fetchEligiblePrograms, type Program, type QuizAnswers } from "@/lib/sup
 
 const SITE_NAME = "BenefitsFinder";
 const TOP_PICKS_COUNT = 3;
-const INITIAL_VISIBLE = 5;
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -253,7 +252,6 @@ export default function Results({ onRestart, answers }: ResultsProps) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     // Save answers so program guide pages can link back to these results
@@ -269,12 +267,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
   const topPicks = programs.slice(0, Math.min(TOP_PICKS_COUNT, programs.length));
   const remaining = programs.slice(topPicks.length);
 
-  // How many of `remaining` are visible before "show more"
-  const initialRemaining = Math.max(0, INITIAL_VISIBLE - topPicks.length);
-  const visibleRemaining = showAll ? remaining : remaining.slice(0, initialRemaining);
-  const hiddenCount = remaining.length - initialRemaining;
-
-  const groupedRemaining = groupByCategory(visibleRemaining);
+  const groupedRemaining = groupByCategory(remaining);
 
   const handlePrint = () => window.print();
 
@@ -345,18 +338,6 @@ export default function Results({ onRestart, answers }: ResultsProps) {
               </div>
             ))}
 
-            {/* Show more button */}
-            {!showAll && hiddenCount > 0 && (
-              <button
-                onClick={() => setShowAll(true)}
-                className="mt-2 w-full py-4 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500 font-semibold hover:border-[#1D9E75] hover:text-[#1D9E75] hover:bg-[#f0fbf7] transition-all text-base flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-                Show {hiddenCount} more program{hiddenCount !== 1 ? "s" : ""}
-              </button>
-            )}
 
           </div>
         )}
