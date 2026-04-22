@@ -334,7 +334,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
             {/* Category tabs */}
             {categories.length > 0 && (
               <>
-                <div className="overflow-x-auto -mx-4 px-4 print:hidden">
+                <div className="no-scrollbar overflow-x-auto -mx-4 px-4 print:hidden">
                   <div className="flex gap-2 pb-2" style={{ minWidth: "max-content" }}>
                     {categories.map((cat) => (
                       <button

@@ -27,6 +27,14 @@ body {
   box-sizing: border-box;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media print {
   @page {
     margin: 1.5cm 2cm;
