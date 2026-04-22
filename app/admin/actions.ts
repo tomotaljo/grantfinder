@@ -24,6 +24,7 @@ function formToProgram(data: FormData) {
     benefit_value:     parseInt(data.get("benefit_value") as string, 10) || 0,
     is_active:         data.get("is_active") === "on",
     state:             stateVal === "federal" ? null : stateVal,
+    important_notes:   (data.get("important_notes") as string) || null,
     eligibility_rules: {},
   };
 }

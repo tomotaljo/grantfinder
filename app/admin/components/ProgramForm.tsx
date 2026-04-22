@@ -150,6 +150,18 @@ export default function ProgramForm({ action, program, heading }: Props) {
               <input name="benefit_value" type="number" min="0" defaultValue={program?.benefit_value ?? 0} required className={input} />
             </Field>
 
+            <div className="sm:col-span-2">
+              <Field label="Important Notes (optional — shown as a warning callout on the program page)">
+                <textarea
+                  name="important_notes"
+                  defaultValue={program?.important_notes ?? ""}
+                  rows={3}
+                  placeholder="e.g. This program is administered by your county, not the state."
+                  className={`${input} resize-none`}
+                />
+              </Field>
+            </div>
+
             <Field label="Status">
               <label className="flex items-center gap-3 cursor-pointer pt-1.5">
                 <input

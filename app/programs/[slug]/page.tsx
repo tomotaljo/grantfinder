@@ -131,6 +131,17 @@ export default async function ProgramPage({ params }: Props) {
             </div>
           </div>
 
+          {/* Important notes callout */}
+          {program.important_notes && (
+            <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-amber-800 leading-relaxed">{program.important_notes}</p>
+            </div>
+          )}
+
           {/* How to apply */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-5 text-center">How to Apply</h2>
