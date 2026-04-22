@@ -252,22 +252,26 @@ export default function Results({ onRestart, answers }: ResultsProps) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
 
   useEffect(() => {
-    // Save answers so program guide pages can link back to these results
     localStorage.setItem("quiz-answers", JSON.stringify(answers));
 
     fetchEligiblePrograms(answers)
-      .then(setPrograms)
+      .then((data) => {
+        setPrograms(data);
+        // Default to first category that has programs
+        const cats = Array.from(new Set(data.slice(TOP_PICKS_COUNT).map((p) => p.category)));
+        if (cats.length > 0) setActiveTab(cats[0]);
+      })
       .catch(() => setError("Could not load programs. Please try again."))
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // DB returns programs sorted by benefit_value DESC — slice directly
   const topPicks = programs.slice(0, Math.min(TOP_PICKS_COUNT, programs.length));
   const remaining = programs.slice(topPicks.length);
-
-  const groupedRemaining = groupByCategory(remaining);
+  const categories = Array.from(new Set(remaining.map((p) => p.category)));
+  const tabPrograms = remaining.filter((p) => p.category === activeTab);
 
   const handlePrint = () => window.print();
 
@@ -313,7 +317,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
         {!loading && !error && programs.length > 0 && (
           <div className="flex flex-col gap-3">
 
-            {/* Top Picks section */}
+            {/* Top Picks */}
             <div className="flex items-center gap-3 mb-1">
               <svg className="w-5 h-5 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -321,23 +325,57 @@ export default function Results({ onRestart, answers }: ResultsProps) {
               <span className="text-sm font-bold uppercase tracking-widest text-gray-400">Top Picks</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
-
-            <div className="flex flex-col gap-5 mb-4">
+            <div className="flex flex-col gap-5 mb-6">
               {topPicks.map((prog) => (
                 <ProgramCard key={prog.id} prog={prog} isTopPick />
               ))}
             </div>
 
-            {/* Remaining programs grouped by category */}
-            {visibleRemaining.length > 0 && groupedRemaining.map(([category, progs]) => (
-              <div key={category} className="flex flex-col gap-5">
-                <CategoryHeading label={category} />
-                {progs.map((prog) => (
-                  <ProgramCard key={prog.id} prog={prog} />
-                ))}
-              </div>
-            ))}
+            {/* Category tabs */}
+            {categories.length > 0 && (
+              <>
+                <div className="overflow-x-auto -mx-4 px-4 print:hidden">
+                  <div className="flex gap-2 pb-2" style={{ minWidth: "max-content" }}>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveTab(cat)}
+                        className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors flex-shrink-0
+                          ${activeTab === cat
+                            ? "bg-[#1D9E75] border-[#1D9E75] text-white"
+                            : "bg-white border-gray-200 text-gray-600 hover:border-[#1D9E75] hover:text-[#1D9E75]"
+                          }`}
+                      >
+                        {cat}
+                        <span className={`ml-1.5 text-xs font-bold ${activeTab === cat ? "text-white/80" : "text-gray-400"}`}>
+                          {remaining.filter((p) => p.category === cat).length}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
+                <div className="flex flex-col gap-5 mt-2">
+                  {tabPrograms.map((prog) => (
+                    <ProgramCard key={prog.id} prog={prog} />
+                  ))}
+                </div>
+
+                {/* Print: show all categories */}
+                <div className="hidden print:block">
+                  {categories.map((cat) => (
+                    <div key={cat}>
+                      <CategoryHeading label={cat} />
+                      <div className="flex flex-col gap-5 mb-4">
+                        {remaining.filter((p) => p.category === cat).map((prog) => (
+                          <ProgramCard key={prog.id} prog={prog} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
           </div>
         )}
