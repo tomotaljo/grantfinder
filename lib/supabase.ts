@@ -70,7 +70,7 @@ function ageRangeToNumber(range: string): number {
 }
 
 export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Program[]> {
-  const stateAbbr = STATE_ABBR[answers.state] ?? answers.state || null;
+  const stateAbbr = (STATE_ABBR[answers.state] ?? answers.state) || null;
   const monthlyIncome = incomeToMonthlyDollars(answers.income);
   const age = ageRangeToNumber(answers.ageRange);
 
