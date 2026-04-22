@@ -355,12 +355,12 @@ export default function Results({ onRestart, answers }: ResultsProps) {
                     <button
                       key={cat}
                       onClick={() => setActiveTab(cat)}
-                      className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
+                      className={`px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
                         ${activeTab === cat
                           ? "bg-[#1D9E75] border-[#1D9E75] text-white"
                           : "bg-white border-gray-200 text-gray-600 hover:border-[#1D9E75] hover:text-[#1D9E75]"
                         }`}
-                      style={{ minWidth: '160px', textAlign: 'center', justifyContent: 'center' }}
+                      style={{ width: '160px', minWidth: '160px', maxWidth: '160px', textAlign: 'center', justifyContent: 'center', minHeight: '48px' }}
                     >
                       {cat}
                       <span className={`ml-1.5 text-xs font-bold ${activeTab === cat ? "text-white/80" : "text-gray-400"}`}>
