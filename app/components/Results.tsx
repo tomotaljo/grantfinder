@@ -337,10 +337,19 @@ export default function Results({ onRestart, answers }: ResultsProps) {
                 <div
                   className="print:hidden"
                   style={{
+                    border: '1.5px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                <div
+                  style={{
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: '8px',
                     paddingBottom: '0px',
+                    justifyContent: 'center',
                   }}
                 >
                   {categories.map((cat) => (
@@ -359,6 +368,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
                       </span>
                     </button>
                   ))}
+                </div>
                 </div>
 
                 <div className="flex flex-col gap-5 mt-2">
