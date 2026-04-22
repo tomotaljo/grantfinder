@@ -298,7 +298,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
       </div>
 
       {/* Content */}
-      <div className="mb-8">
+      <div className="mb-8" style={{ overflow: 'visible' }}>
         {loading && <LoadingSkeleton />}
 
         {error && (
@@ -315,7 +315,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
         )}
 
         {!loading && !error && programs.length > 0 && (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3" style={{ overflow: 'visible' }}>
 
             {/* Top Picks */}
             <div className="flex items-center gap-3 mb-1">
@@ -355,7 +355,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
                     >
                       {cat}
                       <span className={`ml-1.5 text-xs font-bold ${activeTab === cat ? "text-white/80" : "text-gray-400"}`}>
-                        {remaining.filter((p) => p.category === cat).length}
+                        {programs.filter((p) => p.category === cat).length}
                       </span>
                     </button>
                   ))}
