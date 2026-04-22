@@ -120,7 +120,7 @@ export default async function AdminPage() {
                           {prog.is_active ? "Deactivate" : "Activate"}
                         </button>
                       </form>
-                      {prog.slug && cachedSlugs.has(prog.slug) && (
+                      {prog.slug && cachedSlugs.has(prog.slug) ? (
                         <form
                           action={async () => {
                             "use server";
@@ -134,6 +134,15 @@ export default async function AdminPage() {
                             Clear Cache
                           </button>
                         </form>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          title="No cache to clear"
+                          className="text-xs font-medium text-gray-300 border-gray-100 px-3 py-1.5 rounded-lg border cursor-not-allowed opacity-50"
+                        >
+                          Clear Cache
+                        </button>
                       )}
                     </div>
                   </td>
