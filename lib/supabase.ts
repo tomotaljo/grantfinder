@@ -29,6 +29,20 @@ export type QuizAnswers = {
   situation: string[];
 };
 
+const STATE_ABBR: Record<string, string> = {
+  "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA",
+  "Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
+  "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA",
+  "Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD",
+  "Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS",
+  "Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH",
+  "New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC",
+  "North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA",
+  "Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD","Tennessee":"TN",
+  "Texas":"TX","Utah":"UT","Vermont":"VT","Virginia":"VA","Washington":"WA",
+  "West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","Washington D.C.":"DC",
+};
+
 // Map quiz income range strings to an upper-bound monthly dollar value
 function incomeToMonthlyDollars(range: string): number {
   const map: Record<string, number> = {
@@ -56,8 +70,10 @@ function ageRangeToNumber(range: string): number {
 }
 
 export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Program[]> {
+  const stateAbbr = STATE_ABBR[answers.state] ?? answers.state || null;
+
   const { data, error } = await supabase.rpc("get_eligible_programs", {
-    p_state:          answers.state || null,
+    p_state:          stateAbbr,
     p_monthly_income: incomeToMonthlyDollars(answers.income),
     p_age:            ageRangeToNumber(answers.ageRange),
     p_situation:      answers.situation,
