@@ -360,6 +360,7 @@ export default function Results({ onRestart, answers }: ResultsProps) {
                           ? "bg-[#1D9E75] border-[#1D9E75] text-white"
                           : "bg-white border-gray-200 text-gray-600 hover:border-[#1D9E75] hover:text-[#1D9E75]"
                         }`}
+                      style={{ minWidth: '160px', textAlign: 'center', justifyContent: 'center' }}
                     >
                       {cat}
                       <span className={`ml-1.5 text-xs font-bold ${activeTab === cat ? "text-white/80" : "text-gray-400"}`}>
