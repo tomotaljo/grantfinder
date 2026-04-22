@@ -60,7 +60,9 @@ export default async function AdminPage() {
                 <th className="text-right px-4 py-3 font-semibold text-gray-600">Benefit Value</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">AI Cache</th>
-                <th className="px-4 py-3" />
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Edit</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Change Status</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Clear Cache</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -95,63 +97,65 @@ export default async function AdminPage() {
                       <span className="text-xs text-gray-400">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/admin/programs/${prog.id}/edit`}
-                        className="text-xs font-medium text-[#1D9E75] hover:text-[#157a5a] px-3 py-1.5 rounded-lg border border-[#1D9E75] hover:bg-[#e6f7f1] transition-colors"
+                  <td className="px-4 py-3 text-center">
+                    <Link
+                      href={`/admin/programs/${prog.id}/edit`}
+                      className="text-xs font-medium text-[#1D9E75] hover:text-[#157a5a] px-3 py-1.5 rounded-lg border border-[#1D9E75] hover:bg-[#e6f7f1] transition-colors"
+                    >
+                      Edit
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <form
+                      action={async () => {
+                        "use server";
+                        await toggleActive(prog.id, !prog.is_active);
+                      }}
+                    >
+                      <button
+                        type="submit"
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors
+                          ${prog.is_active
+                            ? "text-gray-500 border-gray-200 hover:bg-gray-100"
+                            : "text-[#1D9E75] border-[#1D9E75] hover:bg-[#e6f7f1]"
+                          }`}
                       >
-                        Edit
-                      </Link>
+                        {prog.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                    </form>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {prog.slug && cachedSlugs.has(prog.slug) ? (
                       <form
                         action={async () => {
                           "use server";
-                          await toggleActive(prog.id, !prog.is_active);
+                          await clearGuideCache(prog.slug!);
                         }}
                       >
                         <button
                           type="submit"
-                          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors
-                            ${prog.is_active
-                              ? "text-gray-500 border-gray-200 hover:bg-gray-100"
-                              : "text-[#1D9E75] border-[#1D9E75] hover:bg-[#e6f7f1]"
-                            }`}
-                        >
-                          {prog.is_active ? "Deactivate" : "Activate"}
-                        </button>
-                      </form>
-                      {prog.slug && cachedSlugs.has(prog.slug) ? (
-                        <form
-                          action={async () => {
-                            "use server";
-                            await clearGuideCache(prog.slug!);
-                          }}
-                        >
-                          <button
-                            type="submit"
-                            className="text-xs font-medium text-orange-500 border-orange-200 hover:bg-orange-50 px-3 py-1.5 rounded-lg border transition-colors"
-                          >
-                            Clear Cache
-                          </button>
-                        </form>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled
-                          title="No cache to clear"
-                          className="text-xs font-medium text-gray-300 border-gray-100 px-3 py-1.5 rounded-lg border cursor-not-allowed opacity-50"
+                          className="text-xs font-medium text-orange-500 border-orange-200 hover:bg-orange-50 px-3 py-1.5 rounded-lg border transition-colors"
                         >
                           Clear Cache
                         </button>
-                      )}
-                    </div>
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        title="No cache to clear"
+                        className="text-xs font-medium text-gray-300 border-gray-100 px-3 py-1.5 rounded-lg border cursor-not-allowed opacity-50"
+                      >
+                        Clear Cache
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
 
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
                     No programs yet. Add your first one above.
                   </td>
                 </tr>
