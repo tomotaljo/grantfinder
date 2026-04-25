@@ -256,7 +256,7 @@ export default function AIGuide(props: AIGuideProps) {
       <div className="flex items-center gap-2 mb-4">
         <span className="text-xl">✨</span>
         <h2 className="text-2xl font-bold text-gray-900">Your Complete Guide</h2>
-        <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">AI-generated</span>
+        <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Powered by AI</span>
       </div>
 
       <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
