@@ -38,16 +38,13 @@ export default function Quiz() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (searchParams.get("resume") !== "1") return;
     try {
       const saved = localStorage.getItem("quiz-answers");
       if (!saved) return;
       const parsed = JSON.parse(saved) as Answers;
-      // Hydrate the form from a prior session so returning users don't
-      // re-enter answers from scratch.
-      setAnswers((cur) => ({ ...cur, ...parsed }));
-      // ?resume=1 jumps straight to the results; without it, we just pre-fill
-      // the quiz fields and let the user step through.
-      if (searchParams.get("resume") === "1") setDone(true);
+      setAnswers(parsed);
+      setDone(true);
     } catch {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
