@@ -135,15 +135,28 @@ expect(flState22.length === 0,                                                  
 const nyState22 = ny22.filter((p) => p.scope === "state" && p.state !== "NY");
 expect(nyState22.length === 0,                                                     "NY-22-6k has no non-NY state programs");
 
-// Household-size plumbing (migration_019): RPC accepts p_household_size and
-// returns the same results regardless of value, since the param isn't yet
-// used in filtering. When FPL-aware logic lands, this watchpoint should be
-// updated to assert that varying HH actually changes result counts.
-const probeProfile = { p_state: "TX", p_monthly_income: 1200, p_age: 25, p_situation: [] };
-const r1 = await sb.rpc("get_eligible_programs", { ...probeProfile, p_household_size: 1 });
-const r4 = await sb.rpc("get_eligible_programs", { ...probeProfile, p_household_size: 4 });
-expect(!r1.error && !r4.error,                                                     "RPC accepts p_household_size for HH=1 and HH=4");
-expect(r1.data?.length === r4.data?.length,                                        "p_household_size is currently a no-op (HH=1 and HH=4 return same count — expected until FPL-aware filter)");
+// Household-size sensitivity (migration_020): FPL-aware income filter now
+// scales caps by household size. Was a no-op until migration_019 plumbed
+// the param; now it actually affects results.
+const SNAP_FED = "SNAP - Supplemental Nutrition Assistance Program";
+
+const hhBase = { p_state: "TX", p_monthly_income: 3000, p_age: 30, p_situation: [] };
+const hhProbe1 = await sb.rpc("get_eligible_programs", { ...hhBase, p_household_size: 1 });
+const hhProbe4 = await sb.rpc("get_eligible_programs", { ...hhBase, p_household_size: 4 });
+expect(!hhProbe1.error && !hhProbe4.error,                                          "RPC accepts p_household_size for HH=1 and HH=4");
+expect(hhProbe4.data.length > hhProbe1.data.length,                                  "HH=4 at $3000 matches more programs than HH=1 (FPL caps scale up)");
+
+// Headline bug fix: HH=4 family at $3000/mo now matches federal SNAP.
+// Cap = 130% × $2600 (HH=4 FPL) = $3380. Was a false negative pre-migration_020.
+expect(hhProbe4.data.some((p) => p.name === SNAP_FED),                               "Federal SNAP matches HH=4 at $3000 (the false-negative fix)");
+expect(!hhProbe1.data.some((p) => p.name === SNAP_FED),                              "Federal SNAP does NOT match HH=1 at $3000 (130% × $1255 = $1632 cap)");
+
+// FPL-percent boundary: HH=1, federal SNAP cap = (1255 * 1.30)::int = 1632.
+// At $1632 user passes (≤); at $1633 user fails. Inclusive at the threshold.
+const boundaryAt   = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1632, p_age: 30, p_situation: [], p_household_size: 1 });
+const boundaryOver = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1633, p_age: 30, p_situation: [], p_household_size: 1 });
+expect(boundaryAt.data.some((p) => p.name === SNAP_FED),                             "Federal SNAP includes HH=1 user at FPL boundary income $1632");
+expect(!boundaryOver.data.some((p) => p.name === SNAP_FED),                          "Federal SNAP excludes HH=1 user at $1633 (just over 130% FPL)");
 
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
