@@ -149,14 +149,17 @@ expect(hhProbe4.data.length > hhProbe1.data.length,                             
 // Headline bug fix: HH=4 family at $3000/mo now matches federal SNAP.
 // Cap = 130% × $2600 (HH=4 FPL) = $3380. Was a false negative pre-migration_020.
 expect(hhProbe4.data.some((p) => p.name === SNAP_FED),                               "Federal SNAP matches HH=4 at $3000 (the false-negative fix)");
-expect(!hhProbe1.data.some((p) => p.name === SNAP_FED),                              "Federal SNAP does NOT match HH=1 at $3000 (130% × $1255 = $1632 cap)");
+expect(!hhProbe1.data.some((p) => p.name === SNAP_FED),                              "Federal SNAP does NOT match HH=1 at $3000 (130% × $1330 = $1729 cap)");
 
-// FPL-percent boundary: HH=1, federal SNAP cap = (1255 * 1.30)::int = 1632.
-// At $1632 user passes (≤); at $1633 user fails. Inclusive at the threshold.
-const boundaryAt   = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1632, p_age: 30, p_situation: [], p_household_size: 1 });
-const boundaryOver = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1633, p_age: 30, p_situation: [], p_household_size: 1 });
-expect(boundaryAt.data.some((p) => p.name === SNAP_FED),                             "Federal SNAP includes HH=1 user at FPL boundary income $1632");
-expect(!boundaryOver.data.some((p) => p.name === SNAP_FED),                          "Federal SNAP excludes HH=1 user at $1633 (just over 130% FPL)");
+// FPL-percent boundary: HH=1, federal SNAP cap = (1330 * 1.30)::int = 1729
+// per 2026 federal poverty guidelines. At $1729 user passes (≤); at $1730
+// user fails. Inclusive at the threshold.
+// (Refresh these literals in January when current_fpl_monthly() is updated
+// to the new year's guidelines — see TODO.md.)
+const boundaryAt   = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1729, p_age: 30, p_situation: [], p_household_size: 1 });
+const boundaryOver = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1730, p_age: 30, p_situation: [], p_household_size: 1 });
+expect(boundaryAt.data.some((p) => p.name === SNAP_FED),                             "Federal SNAP includes HH=1 user at 2026 FPL boundary income $1729");
+expect(!boundaryOver.data.some((p) => p.name === SNAP_FED),                          "Federal SNAP excludes HH=1 user at $1730 (just over 130% FPL)");
 
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");

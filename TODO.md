@@ -16,9 +16,12 @@ at $3,000/mo now matches SNAP/Medicaid (was a false negative); HH=1
 user at same income correctly excluded. Test harness covers boundary,
 HH-sensitivity, and headline counts (36 watchpoints, all green).
 
-**Annual maintenance:** `current_fpl_monthly()` hard-codes 2024
-guidelines. When the new federal poverty guidelines drop each January,
-update with a one-statement migration (CREATE OR REPLACE FUNCTION).
+**Annual maintenance:** `current_fpl_monthly()` is hard-coded to the
+2026 federal poverty guidelines (HHS ASPE, Federal Register notice
+2026-00755, published 2026-01-13). When the 2027 guidelines drop in
+January 2027, refresh with a one-statement migration
+(CREATE OR REPLACE FUNCTION). The shape of the function doesn't change
+year-to-year — only the literal values.
 
 ## Eligibility & data quality
 
