@@ -17,7 +17,6 @@ const TOTAL_STEPS = 7;
 
 interface Answers extends QuizAnswers {
   applyingFor: string;
-  householdSize: string;
   enrolled: string[];
 }
 

@@ -14,27 +14,28 @@ SNAP / CalFresh / Medi-Cal even though their real 130% FPL ceiling is
 ~$4,165/mo.
 
 **What's already in place:**
-- The quiz **already captures household size** at Step 4
+- The quiz **captures household size** at Step 4
   (`app/components/steps/Step4HouseholdSize.tsx`), with values "1" through
-  "8+". `Quiz.tsx` stores it on the `Answers` object. The data is collected
-  but dropped before reaching the RPC.
+  "8+". Stored on `Quiz.tsx`'s `Answers` object.
+- `QuizAnswers` in `lib/supabase.ts` carries `householdSize`; the
+  `fetchEligiblePrograms` helper parses it (`"8+"` → 8) and passes it to
+  the RPC as `p_household_size`. (Done in migration_019.)
+- The RPC `get_eligible_programs` accepts `p_household_size int default 1`
+  but does **not yet use it** in the WHERE clause.
 
 **What's missing:**
-- The `QuizAnswers` type in `lib/supabase.ts` carries only state, ageRange,
-  income, situation — not `householdSize`. Add it.
-- `fetchEligiblePrograms` doesn't forward household size to the RPC. Plumb
-  `p_household_size` through the `supabase.rpc()` call.
 - Migrate `eligibility_rules.max_monthly_income` back to
   `max_income_percent_fpl` as the canonical field (or store both).
-- Rewrite `get_eligible_programs` to take a `p_household_size` int param,
-  compute the user's income-as-%-of-FPL from a current FPL table, and
-  compare against each row's percentage cap.
+- Rewrite the income filter in `get_eligible_programs` to compute the
+  user's income-as-%-of-FPL from a current FPL table + `p_household_size`,
+  then compare against each row's percentage cap.
 - Add an FPL table (or a small Postgres function) that returns monthly FPL
   by household size. Federal poverty guidelines update annually — the
   table needs a maintenance pattern.
 
 **Until then:** results page should mention the limitation in the disclaimer
-(see "Quiz disclaimer" item below).
+(see "Quiz disclaimer" item below). The plumbing is end-to-end; the only
+missing piece is the lookup table + function-body change.
 
 ### Quiz disclaimer line about HH approximation
 The results-page disclaimer (`app/components/Results.tsx`) currently doesn't

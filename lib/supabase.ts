@@ -30,6 +30,7 @@ export type Program = {
 export type QuizAnswers = {
   state: string;
   ageRange: string;
+  householdSize: string;  // "1" through "8+" — captured at quiz Step 4
   income: string;
   situation: string[];
 };
@@ -74,18 +75,28 @@ function ageRangeToNumber(range: string): number {
   return map[range] ?? 30;
 }
 
+// Quiz captures household size as "1"–"8+". Map to int (8+ → 8).
+function householdSizeToInt(value: string): number {
+  if (!value) return 1;
+  if (value === "8+") return 8;
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Program[]> {
   const stateAbbr = (STATE_ABBR[answers.state] ?? answers.state) || null;
   const monthlyIncome = incomeToMonthlyDollars(answers.income);
   const age = ageRangeToNumber(answers.ageRange);
+  const householdSize = householdSizeToInt(answers.householdSize);
 
-  console.log("[RPC] params →", { p_state: stateAbbr, p_monthly_income: monthlyIncome, p_age: age, p_situation: answers.situation });
+  console.log("[RPC] params →", { p_state: stateAbbr, p_monthly_income: monthlyIncome, p_age: age, p_situation: answers.situation, p_household_size: householdSize });
 
   const { data, error } = await supabase.rpc("get_eligible_programs", {
     p_state:          stateAbbr,
     p_monthly_income: monthlyIncome,
     p_age:            age,
     p_situation:      answers.situation,
+    p_household_size: householdSize,
   });
 
   console.log("[RPC] result →", { count: data?.length, error: error?.message });

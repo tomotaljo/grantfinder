@@ -45,6 +45,7 @@ const all = {};
 for (const p of profiles) {
   const { data, error } = await sb.rpc("get_eligible_programs", {
     p_state: p.state, p_monthly_income: p.income, p_age: p.age, p_situation: p.sit,
+    p_household_size: p.hh ?? 2,  // accepted by the RPC since migration_019; unused until FPL-aware filter lands
   });
   if (error) {
     console.error(`profile ${p.id}: ERROR ${error.message}`);
@@ -133,6 +134,16 @@ const flState22 = fl22.filter((p) => p.scope === "state" && p.state !== "FL");
 expect(flState22.length === 0,                                                     "FL-22-6k has no non-FL state programs");
 const nyState22 = ny22.filter((p) => p.scope === "state" && p.state !== "NY");
 expect(nyState22.length === 0,                                                     "NY-22-6k has no non-NY state programs");
+
+// Household-size plumbing (migration_019): RPC accepts p_household_size and
+// returns the same results regardless of value, since the param isn't yet
+// used in filtering. When FPL-aware logic lands, this watchpoint should be
+// updated to assert that varying HH actually changes result counts.
+const probeProfile = { p_state: "TX", p_monthly_income: 1200, p_age: 25, p_situation: [] };
+const r1 = await sb.rpc("get_eligible_programs", { ...probeProfile, p_household_size: 1 });
+const r4 = await sb.rpc("get_eligible_programs", { ...probeProfile, p_household_size: 4 });
+expect(!r1.error && !r4.error,                                                     "RPC accepts p_household_size for HH=1 and HH=4");
+expect(r1.data?.length === r4.data?.length,                                        "p_household_size is currently a no-op (HH=1 and HH=4 return same count — expected until FPL-aware filter)");
 
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
