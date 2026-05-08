@@ -3,68 +3,54 @@
 Backlog items called out during recent work. Not tracked in any external system —
 this file is the source of truth until one is set up.
 
+## Done
+
+### FPL-aware income filter — landed in migration_020 (2026-05)
+Income caps on FPL-eligible programs now scale by household size. RPC
+reads `max_income_percent_fpl` (when present) and compares user income
+against `current_fpl_monthly(hh) * pct/100`; falls back to flat-dollar
+`max_monthly_income` for non-FPL rows (TX state, FL TCA, SONYMA, NY
+HEAP, NY Family Assistance). 26 rows converted from migration_017 +
+migration_018 to use FPL-percent caps. Verified in browser: HH=4 family
+at $3,000/mo now matches SNAP/Medicaid (was a false negative); HH=1
+user at same income correctly excluded. Test harness covers boundary,
+HH-sensitivity, and headline counts (36 watchpoints, all green).
+
+**Annual maintenance:** `current_fpl_monthly()` hard-codes 2024
+guidelines. When the new federal poverty guidelines drop each January,
+update with a one-statement migration (CREATE OR REPLACE FUNCTION).
+
 ## Eligibility & data quality
-
-### FPL-aware income filter
-The RPC currently compares user monthly income against flat-dollar
-`max_monthly_income` caps. Caps were calibrated to ~150% FPL household-of-2
-(~$2,550/mo) as a baseline in migration_017. This produces meaningful **false
-negatives for households of 3+** — e.g., a HH=4 family at $3,500/mo is denied
-SNAP / CalFresh / Medi-Cal even though their real 130% FPL ceiling is
-~$4,165/mo.
-
-**What's already in place:**
-- The quiz **captures household size** at Step 4
-  (`app/components/steps/Step4HouseholdSize.tsx`), with values "1" through
-  "8+". Stored on `Quiz.tsx`'s `Answers` object.
-- `QuizAnswers` in `lib/supabase.ts` carries `householdSize`; the
-  `fetchEligiblePrograms` helper parses it (`"8+"` → 8) and passes it to
-  the RPC as `p_household_size`. (Done in migration_019.)
-- The RPC `get_eligible_programs` accepts `p_household_size int default 1`
-  but does **not yet use it** in the WHERE clause.
-
-**What's missing:**
-- Migrate `eligibility_rules.max_monthly_income` back to
-  `max_income_percent_fpl` as the canonical field (or store both).
-- Rewrite the income filter in `get_eligible_programs` to compute the
-  user's income-as-%-of-FPL from a current FPL table + `p_household_size`,
-  then compare against each row's percentage cap.
-- Add an FPL table (or a small Postgres function) that returns monthly FPL
-  by household size. Federal poverty guidelines update annually — the
-  table needs a maintenance pattern.
-
-**Until then:** results page should mention the limitation in the disclaimer
-(see "Quiz disclaimer" item below). The plumbing is end-to-end; the only
-missing piece is the lookup table + function-body change.
-
-### Quiz disclaimer line about HH approximation
-The results-page disclaimer (`app/components/Results.tsx`) currently doesn't
-acknowledge the household-of-2 baseline. Until the FPL-aware filter lands,
-add a sentence like:
-
-> Income limits use a household-of-2 baseline. If your household is larger,
-> you may qualify for more programs than shown — call 211 to check.
 
 ### Pell Grant slug rename
 `california-pell-grant-federal-student-aid` is a federal program with a
 misleading slug. Rename to `pell-grant-federal-student-aid` (or similar).
 Slug-only change — no logic, no eligibility shift.
 
+### Federal seed rules quality
+migration_017 patched the federal seed rows to a usable schema. The FPL
+percentages assigned in migration_020 are reasonable but not all
+double-checked against current program rule books (e.g., SSI's actual
+2024 federal benefit rate is $943/mo single / $1,415/mo couple — we
+modelled it as 100% FPL which is close but not exact). Worth a pass
+when accuracy matters.
+
+### Texas state programs not on FPL
+The 26 Texas state-scope rows from migration_012 were not converted to
+`max_income_percent_fpl` in migration_020. Their flat-dollar caps were
+TX-specific guesses (some clearly off — e.g., texas-medicaid-star at
+$3,200 when actual TX Medicaid is ~16% FPL for adults). HH=4 false
+negatives still possible on these rows. Worth a re-audit; many are
+straightforward FPL conversions (TX SNAP at 165%, TX CHIP at 200%,
+WIC/TEFAP at 185%, etc.).
+
 ## Catalog completeness
 
 ### Information & Referral coverage
-Per migration_015 we have one "[State] 211" row per state for which the
-catalog has any programs. Two states currently have rows (TX and CA). As
-new states get added, every one should get a "[State] 211" row at the
-same time: scope=state, jurisdiction_name=NULL, name format `[State Name] 211`,
-category "Information & Referral", apply_url is the official 211 site,
-phone is `211`, benefit_value 0.
-
-### Federal seed rules quality
-migration_017 patched the federal seed rows to a usable schema, but the
-caps are best-guess approximations. Worth a pass with an eye on the actual
-program rule books (e.g., SSI's actual 2024 federal benefit rate is $943/mo
-single / $1,415/mo couple, not the rounded $1,700 we wrote).
+Every state in the catalog should have a "[State] 211" row when added:
+`scope=state`, `jurisdiction_name=NULL`, `name=[State Name] 211`,
+`category="Information & Referral"`, `apply_url=` official 211 site,
+`phone=211`, `benefit_value=0`. Currently 4 states (CA, TX, FL, NY).
 
 ## Admin / form
 
@@ -110,12 +96,13 @@ migration_011 onward) but the old column was never dropped. It's
 ignored by the current RPC and form, but it's dead weight in the schema
 and is a footgun for future readers.
 
-### `get_eligible_programs` parameter naming
-The RPC parameters are `p_state, p_monthly_income, p_age, p_situation`.
-The `p_` prefix is a Postgres convention for avoiding column-name
-collisions, but if we're touching the function for FPL-aware logic
-anyway, it's an opportunity to also rename consistently and document
-the contract in a header comment.
+### `get_eligible_programs` parameter naming and contract
+The RPC has 5 `p_`-prefixed parameters and no docstring. The contract
+is currently spread across migration_016, migration_019, and
+migration_020. Worth a single CREATE OR REPLACE that adds a header
+comment explaining the schema (`max_income_percent_fpl` vs
+`max_monthly_income` precedence; required_situations behavior;
+boundary inclusivity). No functional change.
 
 ### Vestigial RLS / fallback paths in `lib/supabase.ts`
 `fetchEligiblePrograms` has a fallback that runs a direct
