@@ -30,6 +30,15 @@ const profiles = [
   { id: "TX-25-3.2k+", desc: "TX, 25, $3201/mo, [] (income boundary high)",    state: "TX", age: 25, income: 3201, sit: [] },
   { id: "TX-64-sen",   desc: "TX, 64, $0, [senior]    (under min age)",        state: "TX", age: 64, income: 0,    sit: ["senior"] },
   { id: "TX-65-sen",   desc: "TX, 65, $0, [senior]    (at min age)",           state: "TX", age: 65, income: 0,    sit: ["senior"] },
+
+  // FL + NY coverage (added with migration_018). Three profiles per state:
+  // working-age default, low-income family, senior.
+  { id: "FL-22-6k",    desc: "FL, 22, $6000/mo, []",                           state: "FL", age: 22, income: 6000, sit: [] },
+  { id: "FL-low-fam",  desc: "FL, 25, $800/mo, [single_parent, low_income]",   state: "FL", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
+  { id: "FL-70-sen",   desc: "FL, 70, $1000/mo, [senior]",                     state: "FL", age: 70, income: 1000, sit: ["senior"] },
+  { id: "NY-22-6k",    desc: "NY, 22, $6000/mo, []",                           state: "NY", age: 22, income: 6000, sit: [] },
+  { id: "NY-low-fam",  desc: "NY, 25, $800/mo, [single_parent, low_income]",   state: "NY", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
+  { id: "NY-70-sen",   desc: "NY, 70, $1000/mo, [senior]",                     state: "NY", age: 70, income: 1000, sit: ["senior"] },
 ];
 
 const all = {};
@@ -82,6 +91,48 @@ expect(has("CA-70-1k",  "Medicare Extra Help - Part D Low Income Subsidy"),     
 // Required-situations gates
 expect(!has("TX-22-6k", "Texas TANF (Temporary Assistance for Needy Families)"),  "TX TANF gated by required tags (no match for empty situation)");
 expect(!has("TX-22-6k", "Texas Veterans Commission"),                              "TX Veterans Commission gated by veteran tag");
+
+// ── FL/NY coverage (migration_018) ──────────────────────────────────────
+
+// Working-age default profiles: small result sets, no senior/disability leaks
+const fl22 = all["FL-22-6k"];
+const ny22 = all["NY-22-6k"];
+expect(fl22.length <= 4,                                                           `FL-22-6k row count ≤ 4 (got ${fl22.length})`);
+expect(!fl22.some((p) => sit(p).includes("senior") || sit(p).includes("disability")),
+                                                                                    "FL-22-6k contains no senior/disability programs");
+expect(ny22.length <= 4,                                                           `NY-22-6k row count ≤ 4 (got ${ny22.length})`);
+expect(!ny22.some((p) => sit(p).includes("senior") || sit(p).includes("disability")),
+                                                                                    "NY-22-6k contains no senior/disability programs");
+
+// Florida Medicaid is gated on single_parent/pregnant/disability — must NOT
+// match a non-tagged 22yo, MUST match the single-parent low-income family.
+expect(!has("FL-22-6k",  "Florida Medicaid"),                                      "FL Medicaid excluded for non-parent/non-pregnant/non-disabled 22yo");
+expect(has("FL-low-fam", "Florida Medicaid"),                                      "FL Medicaid matches single-parent low-income family");
+
+// Florida TCA (TANF) — strict tag gate
+expect(!has("FL-22-6k",  "Florida Temporary Cash Assistance (TCA)"),               "FL TCA excluded for non-parent");
+expect(has("FL-low-fam", "Florida Temporary Cash Assistance (TCA)"),               "FL TCA matches single-parent low-income family");
+
+// NY HEAP cap is calibrated to 60% SMI ($5,100), not 150% FPL — verify a
+// $4,500 income still matches (would fail the FPL-based cap).
+const heapAt4500 = all["NY-low-fam"]?.some((p) => p.name === "New York HEAP (Home Energy Assistance Program)");
+expect(heapAt4500,                                                                 "NY HEAP matches low-income family (cap is 60% SMI ≈ $5,100)");
+
+// Senior profile — Office for the Aging matches with senior tag
+expect(has("NY-70-sen", "New York State Office for the Aging"),                    "NY Office for the Aging matches NY 70yo with senior tag");
+expect(has("FL-70-sen", "Florida Elder Helpline"),                                 "FL Elder Helpline matches FL 70yo with senior tag");
+
+// Both 211 rows are no-constraint — should match every profile in their state
+expect(has("FL-22-6k", "Florida 211")  && has("FL-low-fam", "Florida 211")  && has("FL-70-sen", "Florida 211"),
+                                                                                    "Florida 211 matches all FL profiles");
+expect(has("NY-22-6k", "New York 211") && has("NY-low-fam", "New York 211") && has("NY-70-sen", "New York 211"),
+                                                                                    "New York 211 matches all NY profiles");
+
+// Cross-state isolation: FL profile shouldn't see TX or NY state programs
+const flState22 = fl22.filter((p) => p.scope === "state" && p.state !== "FL");
+expect(flState22.length === 0,                                                     "FL-22-6k has no non-FL state programs");
+const nyState22 = ny22.filter((p) => p.scope === "state" && p.state !== "NY");
+expect(nyState22.length === 0,                                                     "NY-22-6k has no non-NY state programs");
 
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
