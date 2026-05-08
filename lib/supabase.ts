@@ -5,6 +5,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export type Scope = "federal" | "state" | "county" | "city";
+
 export type Program = {
   id: string;
   name: string;
@@ -16,7 +18,9 @@ export type Program = {
   apply_url: string;
   eligibility_rules: Record<string, unknown>;
   benefit_value: number;
+  scope: Scope;
   state: string | null;
+  jurisdiction_name: string | null;
   important_notes: string | null;
   slug: string | null;
   is_active: boolean;

@@ -1,45 +1,24 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import type { Program } from "@/lib/supabase";
+import type { Program, Scope } from "@/lib/supabase";
+import { STATES } from "@/lib/states";
 
 const CATEGORIES = [
   "Food Assistance",
   "Health Insurance",
   "Financial Assistance",
   "Utility Assistance",
+  "Information & Referral",
 ];
 
-const STATES = [
-  { value: "federal", label: "Federal (all states)" },
-  { value: "AL", label: "Alabama" }, { value: "AK", label: "Alaska" },
-  { value: "AZ", label: "Arizona" }, { value: "AR", label: "Arkansas" },
-  { value: "CA", label: "California" }, { value: "CO", label: "Colorado" },
-  { value: "CT", label: "Connecticut" }, { value: "DE", label: "Delaware" },
-  { value: "FL", label: "Florida" }, { value: "GA", label: "Georgia" },
-  { value: "HI", label: "Hawaii" }, { value: "ID", label: "Idaho" },
-  { value: "IL", label: "Illinois" }, { value: "IN", label: "Indiana" },
-  { value: "IA", label: "Iowa" }, { value: "KS", label: "Kansas" },
-  { value: "KY", label: "Kentucky" }, { value: "LA", label: "Louisiana" },
-  { value: "ME", label: "Maine" }, { value: "MD", label: "Maryland" },
-  { value: "MA", label: "Massachusetts" }, { value: "MI", label: "Michigan" },
-  { value: "MN", label: "Minnesota" }, { value: "MS", label: "Mississippi" },
-  { value: "MO", label: "Missouri" }, { value: "MT", label: "Montana" },
-  { value: "NE", label: "Nebraska" }, { value: "NV", label: "Nevada" },
-  { value: "NH", label: "New Hampshire" }, { value: "NJ", label: "New Jersey" },
-  { value: "NM", label: "New Mexico" }, { value: "NY", label: "New York" },
-  { value: "NC", label: "North Carolina" }, { value: "ND", label: "North Dakota" },
-  { value: "OH", label: "Ohio" }, { value: "OK", label: "Oklahoma" },
-  { value: "OR", label: "Oregon" }, { value: "PA", label: "Pennsylvania" },
-  { value: "RI", label: "Rhode Island" }, { value: "SC", label: "South Carolina" },
-  { value: "SD", label: "South Dakota" }, { value: "TN", label: "Tennessee" },
-  { value: "TX", label: "Texas" }, { value: "UT", label: "Utah" },
-  { value: "VT", label: "Vermont" }, { value: "VA", label: "Virginia" },
-  { value: "WA", label: "Washington" }, { value: "WV", label: "West Virginia" },
-  { value: "WI", label: "Wisconsin" }, { value: "WY", label: "Wyoming" },
-  { value: "DC", label: "Washington D.C." },
+const SCOPES: { value: Scope; label: string; description: string }[] = [
+  { value: "federal", label: "Federal", description: "Uniform nationwide rules — leave State blank" },
+  { value: "state",   label: "State",   description: "State-administered (incl. block-grant programs run by the state)" },
+  { value: "county",  label: "County",  description: "County agencies and hospital districts" },
+  { value: "city",    label: "City",    description: "City-chartered agencies" },
 ];
 
 type ActionFn = (prev: unknown, data: FormData) => Promise<{ error: string } | void>;
@@ -63,11 +42,12 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       {children}
+      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -76,13 +56,22 @@ const input = "w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text
 
 export default function ProgramForm({ action, program, heading }: Props) {
   const [state, formAction] = useActionState(action, null);
+  const [scope, setScope] = useState<Scope>(program?.scope ?? "federal");
+  const isFederal = scope === "federal";
+  const isLocal = scope === "county" || scope === "city";
 
-  const defaultState = program?.state ?? "federal";
+  const jurisdictionPlaceholder =
+    scope === "county" ? "e.g. Harris County" :
+    scope === "city"   ? "e.g. City of San Antonio" : "";
+
+  const jurisdictionHint =
+    scope === "county" ? 'Convention: "[County Name] County" (e.g. "Harris County")' :
+    scope === "city"   ? 'Convention: "City of [Name]" (e.g. "City of San Antonio")' : "";
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+        <Link href="/admin/programs" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
           ← Programs
         </Link>
         <span className="text-gray-300">/</span>
@@ -112,11 +101,43 @@ export default function ProgramForm({ action, program, heading }: Props) {
               </select>
             </Field>
 
-            <Field label="State Availability">
-              <select name="state" defaultValue={defaultState} className={input}>
-                {STATES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            <Field label="Scope" hint={SCOPES.find((s) => s.value === scope)?.description}>
+              <select
+                name="scope"
+                value={scope}
+                onChange={(e) => setScope(e.target.value as Scope)}
+                className={input}
+              >
+                {SCOPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </Field>
+
+            <Field label={isFederal ? "State (not applicable)" : "State"}>
+              <select
+                name="state"
+                defaultValue={program?.state ?? ""}
+                disabled={isFederal}
+                required={!isFederal}
+                className={`${input} ${isFederal ? "bg-gray-50 text-gray-400" : ""}`}
+              >
+                <option value="">{isFederal ? "—" : "Select a state…"}</option>
+                {STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+              </select>
+            </Field>
+
+            {isLocal && (
+              <div className="sm:col-span-2">
+                <Field label="Jurisdiction" hint={jurisdictionHint}>
+                  <input
+                    name="jurisdiction_name"
+                    defaultValue={program?.jurisdiction_name ?? ""}
+                    placeholder={jurisdictionPlaceholder}
+                    required
+                    className={input}
+                  />
+                </Field>
+              </div>
+            )}
 
             <div className="sm:col-span-2">
               <Field label="Description">
@@ -177,7 +198,7 @@ export default function ProgramForm({ action, program, heading }: Props) {
 
           <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
             <SubmitButton label={program ? "Save Changes" : "Create Program"} />
-            <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+            <Link href="/admin/programs" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
               Cancel
             </Link>
           </div>
