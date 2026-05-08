@@ -104,3 +104,27 @@ export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Progr
   if (fallbackError) throw new Error(fallbackError.message);
   return fallback ?? [];
 }
+
+// Fetch the candidate pool used by the zero-state contact picker:
+// every active program in the user's state plus every active federal program.
+// The picker (lib/contact-picker.ts) filters this pool per category.
+export async function fetchZeroStateContactPool(stateName: string): Promise<Program[]> {
+  const stateAbbr = (STATE_ABBR[stateName] ?? stateName) || null;
+  if (!stateAbbr) return [];
+
+  const { data, error } = await supabase
+    .from("programs")
+    .select("*")
+    .eq("is_active", true)
+    .or(`scope.eq.federal,and(scope.eq.state,state.eq.${stateAbbr})`);
+
+  if (error) {
+    console.warn("[zero-state contacts] fetch failed:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export function stateCodeFromName(stateName: string): string | null {
+  return STATE_ABBR[stateName] ?? null;
+}

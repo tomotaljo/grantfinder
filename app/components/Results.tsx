@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchEligiblePrograms, type Program, type QuizAnswers } from "@/lib/supabase";
+import ZeroResults from "./ZeroResults";
 
 const SITE_NAME = "BenefitsFinder";
 const TOP_PICKS_COUNT = 3;
@@ -245,10 +246,11 @@ function EmailCapture({ answers }: { answers: QuizAnswers }) {
 
 interface ResultsProps {
   onRestart: () => void;
+  onEditAnswers: () => void;
   answers: QuizAnswers;
 }
 
-export default function Results({ onRestart, answers }: ResultsProps) {
+export default function Results({ onRestart, onEditAnswers, answers }: ResultsProps) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -273,6 +275,17 @@ export default function Results({ onRestart, answers }: ResultsProps) {
   const tabPrograms = programs.filter((p) => p.category === activeTab);
 
   const handlePrint = () => window.print();
+
+  // Zero-state gets a dedicated empty-results layout — no print header,
+  // no disclaimer, no bottom action bar. ZeroResults supplies its own
+  // copy, contacts, and next-step buttons.
+  if (!loading && !error && programs.length === 0) {
+    return (
+      <div className="w-full max-w-2xl mx-auto">
+        <ZeroResults answers={answers} onEditAnswers={onEditAnswers} />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -313,13 +326,6 @@ export default function Results({ onRestart, answers }: ResultsProps) {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-red-700 text-base">
             <strong>Error:</strong> {error}
-          </div>
-        )}
-
-        {!loading && !error && programs.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg font-medium mb-2">No programs matched your answers.</p>
-            <p className="text-base">Try adjusting your responses or contact your local benefits office.</p>
           </div>
         )}
 

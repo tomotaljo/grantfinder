@@ -38,13 +38,16 @@ export default function Quiz() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get("resume") !== "1") return;
     try {
       const saved = localStorage.getItem("quiz-answers");
       if (!saved) return;
       const parsed = JSON.parse(saved) as Answers;
-      setAnswers(parsed);
-      setDone(true);
+      // Hydrate the form from a prior session so returning users don't
+      // re-enter answers from scratch.
+      setAnswers((cur) => ({ ...cur, ...parsed }));
+      // ?resume=1 jumps straight to the results; without it, we just pre-fill
+      // the quiz fields and let the user step through.
+      if (searchParams.get("resume") === "1") setDone(true);
     } catch {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -54,6 +57,8 @@ export default function Quiz() {
   };
   const back = () => setStep((s) => s - 1);
   const restart = () => { setStep(1); setDone(false); setAnswers(DEFAULT); };
+  // Edit-answers preserves the answers in state and just rewinds to step 1.
+  const editAnswers = () => { setStep(1); setDone(false); };
 
   const set = <K extends keyof Answers>(key: K) =>
     (val: Answers[K]) => setAnswers((a) => ({ ...a, [key]: val }));
@@ -63,7 +68,7 @@ export default function Quiz() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-8 sm:py-12">
-          <Results onRestart={restart} answers={answers} />
+          <Results onRestart={restart} onEditAnswers={editAnswers} answers={answers} />
         </main>
       </div>
     );
