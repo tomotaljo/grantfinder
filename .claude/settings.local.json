@@ -7,7 +7,32 @@
       "Bash(vercel --version)",
       "Bash(git --version)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(npm install *)",
+      "Bash(git commit *)",
+      "Skill(claude-api)",
+      "Bash(vercel env *)",
+      "Bash(npx vercel *)",
+      "Bash(node *)",
+      "Bash(awk -F= '{print \"Value length:\", length\\($2\\)}')",
+      "Bash(git -C /c/Users/tomot/grantfinder diff --stat)",
+      "Bash(git -C /c/Users/tomot/grantfinder status --short)",
+      "Bash(curl -s http://localhost:3000/api/programs/guide?slug=test)",
+      "WebFetch(domain:www.mypublicaid.org)",
+      "WebFetch(domain:mypublicaid.org)",
+      "WebFetch(domain:www.coveredca.gov)",
+      "WebFetch(domain:housing.ca.gov)",
+      "WebFetch(domain:www.aging.ca.gov)",
+      "WebFetch(domain:hss.sbcounty.gov)",
+      "WebFetch(domain:www.benefits.gov)",
+      "WebFetch(domain:studentaid.gov)",
+      "WebFetch(domain:www.energy.gov)",
+      "Bash(curl *)"
     ]
   }
 }
