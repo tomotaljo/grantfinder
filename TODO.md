@@ -23,6 +23,32 @@ January 2027, refresh with a one-statement migration
 (CREATE OR REPLACE FUNCTION). The shape of the function doesn't change
 year-to-year — only the literal values.
 
+## Catalog research projects
+
+### State-level rental and eviction assistance pass
+After migration_028 deactivated the homebuyer-focused state housing finance
+rows, the catalog has **no state-level rental/eviction assistance row** for
+21 of the 24 states currently in it (only CA and TX have a state-level rental
+referral row, plus Opportunity Home San Antonio at the city level). Users
+in other states only have the 211 row for housing help.
+
+This deserves a dedicated research session — it's not a quick backfill while
+adding states. Categories to research per state:
+- **Emergency Rental Assistance Program (ERAP) residuals** — many states
+  still have small pockets of rental aid funded by leftover federal dollars.
+- **State-funded eviction prevention / diversion programs** — separate from
+  ERAP; many states stood these up post-pandemic.
+- **State Section 8 / Housing Choice Voucher waitlist application portals**
+  — federal funding, but the entry point is the state housing authority's
+  waitlist (not the homebuyer arm we just removed).
+- **Tenant-based rental assistance (TBRA) administered through the state**
+  rather than local PHAs.
+
+Goal: one to three rental-assistance rows per state with the right
+phone numbers and apply-here URLs, applied consistently across the catalog
+in a single pass. Will replace the housing slot we're now leaving empty in
+new state additions (see migration_027 onward).
+
 ## Annual maintenance (January cadence)
 
 A short list of items to refresh each January when the new HHS guidelines
