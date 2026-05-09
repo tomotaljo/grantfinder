@@ -23,31 +23,155 @@ January 2027, refresh with a one-statement migration
 (CREATE OR REPLACE FUNCTION). The shape of the function doesn't change
 year-to-year — only the literal values.
 
+## Catalog inclusion principles
+
+Resolved during the migration_028 housing-finance cleanup (2026-05).
+Recording the rule here so it's preserved for future state additions
+and category decisions.
+
+**MyPublicAid is for consumption support, not wealth-building.** The
+catalog should index programs that help people in immediate need pay
+for things they need *right now* — food, healthcare, rent, utilities,
+cash assistance, crisis services. Wealth-building, long-term financial
+planning, and capital-formation programs belong in a separate consumer
+grants/loans engine that hasn't been built yet.
+
+**Include:**
+- Programs providing direct consumption support to people in difficulty
+  (food, healthcare, rent, utilities, cash assistance, energy bills,
+  emergency services, referrals).
+
+**Exclude — route to the future grants/loans engine:**
+- Homebuyer assistance and down-payment grants
+- Mortgage credit certificates
+- First-time buyer programs
+- Small business grants and loans
+- Education savings accounts and 529 contributions
+- Retirement-planning programs
+- Other wealth-building or long-term financial-planning programs
+
+**Reference precedent:** migration_028 deactivated 23 state housing
+finance authority programs (My First Texas Home, SONYMA, Florida
+Hometown Heroes, IHDA, MSHDA, etc.) under this rule. Rental assistance,
+public housing waitlists, eviction prevention, and Section 8 vouchers
+were kept — those are consumption support.
+
 ## Catalog research projects
 
-### State-level rental and eviction assistance pass
-After migration_028 deactivated the homebuyer-focused state housing finance
-rows, the catalog has **no state-level rental/eviction assistance row** for
-21 of the 24 states currently in it (only CA and TX have a state-level rental
-referral row, plus Opportunity Home San Antonio at the city level). Users
-in other states only have the 211 row for housing help.
+### State-level rental and eviction assistance — Phase 1
+After migration_028 deactivated the homebuyer-focused state housing
+finance rows, 21+ of currently-populated states have **no state-administered
+rental assistance row**. Users in those states only see federal options
+plus the 211 row for housing help.
 
-This deserves a dedicated research session — it's not a quick backfill while
-adding states. Categories to research per state:
+**Goal:** every populated state has at least one state-administered
+rental assistance row, or honest documentation that no such program
+exists ("no state-administered program — call 211").
+
+**Scope:** state-level only. County and city-level are separate phases
+(see below). State scope means programs administered statewide, or by
+an entity covering ≥50% of state population.
+
+**Methodology:**
+- Use FindHelp.org's directory as a discovery tool (search by ZIP code
+  in 2-3 cities per state to surface candidates).
+- Verify each candidate against the program's authoritative source
+  (state agency website, nonprofit homepage). Don't enter rows from
+  FindHelp's listing — only from the authoritative source.
+- Claude Code produces a research dossier per state; the human
+  verifies candidates and approves the subset for catalog inclusion.
+- Single migration per batch of 3-5 states.
+
+**Categories to research per state:**
 - **Emergency Rental Assistance Program (ERAP) residuals** — many states
   still have small pockets of rental aid funded by leftover federal dollars.
-- **State-funded eviction prevention / diversion programs** — separate from
-  ERAP; many states stood these up post-pandemic.
+- **State-funded eviction prevention / homelessness prevention** — separate
+  from ERAP; many states stood these up post-pandemic.
 - **State Section 8 / Housing Choice Voucher waitlist application portals**
   — federal funding, but the entry point is the state housing authority's
   waitlist (not the homebuyer arm we just removed).
 - **Tenant-based rental assistance (TBRA) administered through the state**
   rather than local PHAs.
+- **State Continuum of Care entry points** — only if they provide actual
+  benefits, not just referrals.
 
-Goal: one to three rental-assistance rows per state with the right
-phone numbers and apply-here URLs, applied consistently across the catalog
-in a single pass. Will replace the housing slot we're now leaving empty in
-new state additions (see migration_027 onward).
+**Inclusion criteria** — a candidate must meet ALL of:
+1. Administered at state level, statewide, or by an entity covering
+   ≥50% of state population.
+2. Currently accepting applications as of 2026 (verify via web check).
+3. Provides direct rental assistance, eviction prevention, or housing
+   stability support to consumers.
+4. Eligibility rules can be encoded in our schema (income threshold,
+   household sensitivity, situation tags).
+5. Phone number and web URL that resolve as of today.
+
+If a state has no programs meeting all 5 criteria, add an honest
+"no state-administered program — call 211" note rather than
+manufacturing a marginal row.
+
+**Effort:** ~50-70 minutes of human verification time per state,
+~25-30 hours total across 24 states. 10-12 focused sessions.
+
+**Pilot recommendation:** Run California first as a single-state pilot
+to calibrate the methodology before scaling. The catalog owner knows
+California reasonably well, so the pilot's findings can be sanity-
+checked against intuition before the methodology is locked in.
+
+### County and city-level rental assistance — Phases 2 and 3
+**Phase 2:** add city-scope rental assistance for the top 30-50 US
+cities by population (NYC, LA, Chicago, Houston, Phoenix, Philadelphia,
+San Antonio, San Diego, Dallas, San Jose, Austin, Jacksonville, Fort
+Worth, Columbus, Charlotte, Indianapolis, San Francisco, Seattle,
+Denver, Washington DC, etc.). Estimated 15-20 hours.
+
+**Phase 3:** add county-scope rental assistance for the top 50-100
+high-population counties (LA County, Cook County, Harris County,
+Maricopa County, San Diego County, Orange County, Miami-Dade, etc.).
+Estimated 30+ hours.
+
+**UX prerequisite for Phases 2 and 3:** the public quiz currently
+captures only state. Without city/county-granular location capture,
+city/county-scope programs can't be properly filtered to the right
+users. Probably a ZIP-code input that resolves to county/city via a
+lookup table. **Don't tackle Phases 2 or 3 until Phase 1 is complete
+and the location-capture UX update is in place.**
+
+## Program guides
+
+### "What you'll receive" section
+Add a standard section to every program guide that describes what
+the benefit actually provides once received, distinct from the
+existing "how to apply" content.
+
+**Goals:**
+- Help users decide whether to apply (understanding what they'd get).
+- Help users maximize the benefit once received (e.g., SNAP at farmers
+  markets, Medicaid preventive dental, LIHEAP weatherization).
+- Reduce the dignity cost of applying by making abstract help tangible.
+
+**Content requirements:**
+- State-specific where coverage varies (Medicaid dental/vision are
+  state-specific).
+- Avoid specific dollar amounts — defer to ranges with "varies based on
+  income/household".
+- Anchor to authoritative sources (federal program docs, state agency
+  materials).
+- Include "varies by county/region — call to confirm" hedges where
+  applicable.
+
+**Implementation:**
+- New section in the existing AI guide generation flow.
+- Prompt design needs state-specific context, not just program-specific.
+- Cache key needs to invalidate if state coverage rules change (annual
+  review item — see Annual maintenance section).
+
+**Sources to draw from:**
+- **SNAP**: USDA FNS coverage rules, state-specific add-ons (Double Up
+  Food Bucks, etc.)
+- **Medicaid**: state Medicaid plan documents, MACPAC summaries
+- **LIHEAP**: state LIHEAP plans, weatherization program inclusion
+- **TANF**: state-specific work-support and child-care benefits
+- **WIC**: federal nutrition package + state add-ons
 
 ## Annual maintenance (January cadence)
 
@@ -65,8 +189,8 @@ Shape doesn't change year-to-year — only the literal values.
 Walk every Medicaid row in the catalog and confirm:
 - **Expansion status** — has any non-expansion state expanded? Has any
   expansion state contracted? Adjust the row's required_situations gate.
-  (At time of writing: FL, AL, GA, MS are non-expansion; everyone else
-  in the catalog is expansion.)
+  (At time of writing: FL, AL, GA, MS, KS, TN are non-expansion; everyone
+  else in the catalog is expansion.)
 - **Indiana HIP work requirement status** — Healthy Indiana Plan has had
   on-again/off-again work requirements over the years; current row
   assumes none. Re-check.
@@ -77,6 +201,16 @@ Walk every Medicaid row in the catalog and confirm:
   programs (Pathways-style) may have launched elsewhere.
 - **Any state agency renames** — a few states reorganize their human
   services agencies regularly; spot-check phone numbers and apply URLs.
+
+**Sources to consult:**
+- **HHS ASPE Federal Register notice** — annual FPL update with the new
+  monthly values for `current_fpl_monthly()`.
+- **KFF state Medicaid expansion tracker** — definitive list of which
+  states have expanded vs. not, refreshed continuously.
+- **State Medicaid agency homepages** for any flagged programs (Indiana
+  HIP, Georgia Pathways, etc.) — check for posted policy changes.
+- **LIHEAP Clearinghouse** (`liheapch.acf.gov`) for state-by-state
+  income thresholds (FPL% vs SMI%, current year's tables).
 
 ## Eligibility & data quality
 
