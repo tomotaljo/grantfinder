@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 export interface StateCounts {
@@ -13,28 +12,27 @@ interface Props {
   code: string;        // 2-letter, e.g. "CA"
   name: string;        // "California"
   counts: StateCounts;
+  expanded: boolean;
+  onToggle: () => void;
 }
 
-export default function StateRow({ code, name, counts }: Props) {
+export default function StateRow({ code, name, counts, expanded, onToggle }: Props) {
   const total = counts.state + counts.county + counts.city;
   const empty = total === 0;
-  // Default: populated states open, empty states collapsed.
-  const [expanded, setExpanded] = useState(!empty);
-  const toggle = () => setExpanded((e) => !e);
 
   if (!expanded) {
     return (
       <button
-        onClick={toggle}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-left rounded-xl hover:bg-gray-50 transition-colors"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 text-left rounded-xl hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-2">
           <Chevron expanded={false} />
-          <span className={`font-medium ${empty ? "text-sm text-gray-500" : "text-gray-900"}`}>
+          <span className={`text-base font-bold ${empty ? "text-gray-700" : "text-gray-900"}`}>
             {name}
           </span>
         </div>
-        <span className="text-xs text-gray-400">
+        <span className={`text-base font-bold ${empty ? "text-gray-400" : "text-gray-500"}`}>
           {empty
             ? "no programs yet · click to add"
             : `${counts.state} state · ${counts.county} county · ${counts.city} city`}
@@ -46,11 +44,11 @@ export default function StateRow({ code, name, counts }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-4">
       <button
-        onClick={toggle}
+        onClick={onToggle}
         className="w-full flex items-center gap-2 mb-3 text-left hover:opacity-80 transition-opacity"
       >
         <Chevron expanded={true} />
-        <h2 className="font-semibold text-gray-900">{name}</h2>
+        <h2 className="text-base font-bold text-gray-900">{name}</h2>
       </button>
       <div className="grid grid-cols-3 gap-3">
         <ScopeCard code={code} scope="state"  count={counts.state}  label="State" />
