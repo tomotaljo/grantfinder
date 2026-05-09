@@ -39,6 +39,20 @@ const profiles = [
   { id: "NY-22-6k",    desc: "NY, 22, $6000/mo, []",                           state: "NY", age: 22, income: 6000, sit: [] },
   { id: "NY-low-fam",  desc: "NY, 25, $800/mo, [single_parent, low_income]",   state: "NY", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
   { id: "NY-70-sen",   desc: "NY, 70, $1000/mo, [senior]",                     state: "NY", age: 70, income: 1000, sit: ["senior"] },
+
+  // NV/AL/AK/AZ coverage (added with migration_022).
+  { id: "NV-22-6k",    desc: "NV, 22, $6000/mo, []",                           state: "NV", age: 22, income: 6000, sit: [] },
+  { id: "NV-low-fam",  desc: "NV, 25, $800/mo, [single_parent, low_income]",   state: "NV", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
+  { id: "NV-70-sen",   desc: "NV, 70, $1000/mo, [senior]",                     state: "NV", age: 70, income: 1000, sit: ["senior"] },
+  { id: "AL-22-6k",    desc: "AL, 22, $6000/mo, []",                           state: "AL", age: 22, income: 6000, sit: [] },
+  { id: "AL-low-fam",  desc: "AL, 25, $600/mo, [single_parent, low_income]",   state: "AL", age: 25, income: 600,  sit: ["single_parent", "low_income"] },
+  { id: "AL-70-sen",   desc: "AL, 70, $1000/mo, [senior]",                     state: "AL", age: 70, income: 1000, sit: ["senior"] },
+  { id: "AK-22-6k",    desc: "AK, 22, $6000/mo, []",                           state: "AK", age: 22, income: 6000, sit: [] },
+  { id: "AK-low-fam",  desc: "AK, 25, $1500/mo, [single_parent, low_income]",  state: "AK", age: 25, income: 1500, sit: ["single_parent", "low_income"] },
+  { id: "AK-70-sen",   desc: "AK, 70, $1200/mo, [senior]",                     state: "AK", age: 70, income: 1200, sit: ["senior"] },
+  { id: "AZ-22-6k",    desc: "AZ, 22, $6000/mo, []",                           state: "AZ", age: 22, income: 6000, sit: [] },
+  { id: "AZ-low-fam",  desc: "AZ, 25, $800/mo, [single_parent, low_income]",   state: "AZ", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
+  { id: "AZ-70-sen",   desc: "AZ, 70, $1000/mo, [senior]",                     state: "AZ", age: 70, income: 1000, sit: ["senior"] },
 ];
 
 const all = {};
@@ -150,6 +164,43 @@ expect(hhProbe4.data.length > hhProbe1.data.length,                             
 // Cap = 130% × $2600 (HH=4 FPL) = $3380. Was a false negative pre-migration_020.
 expect(hhProbe4.data.some((p) => p.name === SNAP_FED),                               "Federal SNAP matches HH=4 at $3000 (the false-negative fix)");
 expect(!hhProbe1.data.some((p) => p.name === SNAP_FED),                              "Federal SNAP does NOT match HH=1 at $3000 (130% × $1330 = $1729 cap)");
+
+// ── NV/AL/AK/AZ coverage (migration_022) ────────────────────────────────
+
+// Working-age $6k profiles: small result sets, no senior/disability leaks.
+for (const code of ["NV", "AL", "AK", "AZ"]) {
+  const rows = all[`${code}-22-6k`];
+  expect(rows.length <= 4,                                                           `${code}-22-6k row count ≤ 4 (got ${rows.length})`);
+  expect(!rows.some((p) => sit(p).includes("senior") || sit(p).includes("disability")),
+                                                                                      `${code}-22-6k contains no senior/disability programs`);
+  // State isolation
+  const otherState = rows.filter((p) => p.scope === "state" && p.state !== code);
+  expect(otherState.length === 0,                                                    `${code}-22-6k has no non-${code} state programs`);
+}
+
+// Alabama Medicaid is gated like FL — must NOT match a non-tagged 22yo,
+// MUST match a single-parent low-income family.
+expect(!has("AL-22-6k",  "Alabama Medicaid"),                                       "AL Medicaid excluded for non-parent/non-pregnant/non-disabled 22yo");
+expect(has("AL-low-fam", "Alabama Medicaid"),                                       "AL Medicaid matches single-parent low-income family");
+
+// Expansion-state Medicaids match a low-income family without a tag gate.
+expect(has("NV-low-fam", "Nevada Medicaid"),                                        "NV Medicaid matches low-income family (expansion state, no tag gate)");
+expect(has("AZ-low-fam", "Arizona AHCCCS (Arizona Medicaid)"),                      "AZ AHCCCS matches low-income family");
+expect(has("AK-low-fam", "Alaska Medicaid"),                                        "AK Medicaid matches low-income family");
+
+// Each new state's senior aging program matches with senior tag
+expect(has("NV-70-sen", "Nevada Aging and Disability Services Division"),           "NV ADSD matches NV 70yo with senior tag");
+expect(has("AL-70-sen", "Alabama Department of Senior Services"),                   "AL Senior Services matches AL 70yo with senior tag");
+expect(has("AK-70-sen", "Alaska Senior and Disabilities Services"),                 "AK SDS matches AK 70yo with senior tag");
+expect(has("AZ-70-sen", "Arizona Aging and Adult Services"),                        "AZ Aging and Adult Services matches AZ 70yo with senior tag");
+
+// Each new state's 211 row is no-constraint — should match every profile in the state
+for (const code of ["NV", "AL", "AK", "AZ"]) {
+  const stateNames = { NV: "Nevada 211", AL: "Alabama 211", AK: "Alaska 211", AZ: "Arizona 211" };
+  const name = stateNames[code];
+  expect(has(`${code}-22-6k`, name) && has(`${code}-low-fam`, name) && has(`${code}-70-sen`, name),
+                                                                                      `${name} matches all ${code} profiles`);
+}
 
 // FPL-percent boundary: HH=1, federal SNAP cap = (1330 * 1.30)::int = 1729
 // per 2026 federal poverty guidelines. At $1729 user passes (≤); at $1730

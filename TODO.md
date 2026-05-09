@@ -38,6 +38,25 @@ double-checked against current program rule books (e.g., SSI's actual
 modelled it as 100% FPL which is close but not exact). Worth a pass
 when accuracy matters.
 
+### State-aware FPL function (Alaska / Hawaii)
+`current_fpl_monthly(p_household_size int)` only encodes the 48-state +
+DC guidelines. Alaska's 2026 FPL is ~25% higher across all household
+sizes, and Hawaii's is ~15% higher. Migration_022 deliberately uses
+`max_income_percent_fpl` for Alaska programs (alaska-medicaid,
+alaska-snap, alaska-heating-assistance), accepting a known ~25%
+under-estimate of AK eligibility caps.
+
+**Fix shape:**
+- Change function signature to
+  `current_fpl_monthly(p_household_size int, p_state text default null)`.
+  Return Alaska/Hawaii values when `p_state` is `'AK'`/`'HI'`,
+  contiguous-states values otherwise.
+- Update `get_eligible_programs` body to forward `p_state` into the
+  helper call.
+- Add Alaska + Hawaii FPL tables (2026 values from HHS ASPE).
+- The Alaska `important_notes` warnings on AK rows can come off once
+  the function is state-aware. Same for the Hawaii rows when added.
+
 ### Texas state programs not on FPL
 The 26 Texas state-scope rows from migration_012 were not converted to
 `max_income_percent_fpl` in migration_020. Their flat-dollar caps were
