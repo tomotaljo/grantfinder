@@ -23,6 +23,35 @@ January 2027, refresh with a one-statement migration
 (CREATE OR REPLACE FUNCTION). The shape of the function doesn't change
 year-to-year — only the literal values.
 
+## Annual maintenance (January cadence)
+
+A short list of items to refresh each January when the new HHS guidelines
+drop. Federal and state Medicaid policy is volatile enough that a yearly
+pass is warranted.
+
+### FPL guidelines refresh
+`current_fpl_monthly()` is currently on 2026 values (HHS ASPE Federal
+Register notice 2026-00755). When the 2027 guidelines drop in January
+2027, refresh with a one-statement migration (CREATE OR REPLACE FUNCTION).
+Shape doesn't change year-to-year — only the literal values.
+
+### State Medicaid policy verification
+Walk every Medicaid row in the catalog and confirm:
+- **Expansion status** — has any non-expansion state expanded? Has any
+  expansion state contracted? Adjust the row's required_situations gate.
+  (At time of writing: FL, AL, GA, MS are non-expansion; everyone else
+  in the catalog is expansion.)
+- **Indiana HIP work requirement status** — Healthy Indiana Plan has had
+  on-again/off-again work requirements over the years; current row
+  assumes none. Re-check.
+- **Georgia Pathways requirements** — currently 80 hrs/mo of work, study,
+  or community service. Verify the threshold and the categories haven't
+  changed; update `important_notes` on `georgia-medicaid` if so.
+- **Any new state programs** — partial-expansion or experimental coverage
+  programs (Pathways-style) may have launched elsewhere.
+- **Any state agency renames** — a few states reorganize their human
+  services agencies regularly; spot-check phone numbers and apply URLs.
+
 ## Eligibility & data quality
 
 ### Pell Grant slug rename

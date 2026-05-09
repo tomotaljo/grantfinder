@@ -76,6 +76,23 @@ const profiles = [
   { id: "MS-22-6k",    desc: "MS, 22, $6000/mo, []",                           state: "MS", age: 22, income: 6000, sit: [] },
   { id: "MS-low-fam",  desc: "MS, 25, $500/mo, [single_parent, low_income]",   state: "MS", age: 25, income: 500,  sit: ["single_parent", "low_income"] },
   { id: "MS-70-sen",   desc: "MS, 70, $1000/mo, [senior]",                     state: "MS", age: 70, income: 1000, sit: ["senior"] },
+
+  // CO/CT/DE/ID/IN coverage (added with migration_025).
+  { id: "CO-22-6k",    desc: "CO, 22, $6000/mo, []",                           state: "CO", age: 22, income: 6000, sit: [] },
+  { id: "CO-low-fam",  desc: "CO, 25, $800/mo, [single_parent, low_income]",   state: "CO", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
+  { id: "CO-70-sen",   desc: "CO, 70, $1000/mo, [senior]",                     state: "CO", age: 70, income: 1000, sit: ["senior"] },
+  { id: "CT-22-6k",    desc: "CT, 22, $6000/mo, []",                           state: "CT", age: 22, income: 6000, sit: [] },
+  { id: "CT-low-fam",  desc: "CT, 25, $1200/mo, [single_parent, low_income]",  state: "CT", age: 25, income: 1200, sit: ["single_parent", "low_income"] },
+  { id: "CT-70-sen",   desc: "CT, 70, $1000/mo, [senior]",                     state: "CT", age: 70, income: 1000, sit: ["senior"] },
+  { id: "DE-22-6k",    desc: "DE, 22, $6000/mo, []",                           state: "DE", age: 22, income: 6000, sit: [] },
+  { id: "DE-low-fam",  desc: "DE, 25, $600/mo, [single_parent, low_income]",   state: "DE", age: 25, income: 600,  sit: ["single_parent", "low_income"] },
+  { id: "DE-70-sen",   desc: "DE, 70, $1000/mo, [senior]",                     state: "DE", age: 70, income: 1000, sit: ["senior"] },
+  { id: "ID-22-6k",    desc: "ID, 22, $6000/mo, []",                           state: "ID", age: 22, income: 6000, sit: [] },
+  { id: "ID-low-fam",  desc: "ID, 25, $600/mo, [single_parent, low_income]",   state: "ID", age: 25, income: 600,  sit: ["single_parent", "low_income"] },
+  { id: "ID-70-sen",   desc: "ID, 70, $1000/mo, [senior]",                     state: "ID", age: 70, income: 1000, sit: ["senior"] },
+  { id: "IN-22-6k",    desc: "IN, 22, $6000/mo, []",                           state: "IN", age: 22, income: 6000, sit: [] },
+  { id: "IN-low-fam",  desc: "IN, 25, $600/mo, [single_parent, low_income]",   state: "IN", age: 25, income: 600,  sit: ["single_parent", "low_income"] },
+  { id: "IN-70-sen",   desc: "IN, 70, $1000/mo, [senior]",                     state: "IN", age: 70, income: 1000, sit: ["senior"] },
 ];
 
 const all = {};
@@ -191,7 +208,7 @@ expect(!hhProbe1.data.some((p) => p.name === SNAP_FED),                         
 // ── NV/AL/AK/AZ coverage (migration_022) ────────────────────────────────
 
 // Working-age $6k profiles: small result sets, no senior/disability leaks.
-for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS"]) {
+for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN"]) {
   const rows = all[`${code}-22-6k`];
   expect(rows.length <= 4,                                                           `${code}-22-6k row count ≤ 4 (got ${rows.length})`);
   expect(!rows.some((p) => sit(p).includes("senior") || sit(p).includes("disability")),
@@ -222,6 +239,12 @@ expect(has("AR-70-sen", "Arkansas Aging, Adult, and Behavioral Health Services")
 expect(has("GA-70-sen", "Georgia Division of Aging Services (GA Cares)"),           "GA Cares matches GA 70yo with senior tag");
 expect(has("MI-70-sen", "Michigan Aging and Adult Services Agency"),                "MI AASA matches MI 70yo with senior tag");
 expect(has("MS-70-sen", "Mississippi Aging and Adult Services"),                    "MS Aging matches MS 70yo with senior tag");
+expect(has("CO-70-sen", "Colorado State Unit on Aging"),                            "CO Aging matches CO 70yo with senior tag");
+expect(has("CT-70-sen", "Connecticut Aging and Disability Services"),               "CT Aging matches CT 70yo with senior tag");
+expect(has("DE-70-sen", "Delaware Division of Services for Aging and Adults with Physical Disabilities (DSAAPD)"),
+                                                                                     "DE DSAAPD matches DE 70yo with senior tag");
+expect(has("ID-70-sen", "Idaho Commission on Aging"),                               "ID Aging matches ID 70yo with senior tag");
+expect(has("IN-70-sen", "Indiana Division of Aging"),                               "IN Aging matches IN 70yo with senior tag");
 
 // Hawaii Med-QUEST is an expansion-state Medicaid (no required tags) — must
 // match a low-income family.
@@ -231,6 +254,13 @@ expect(has("HI-low-fam", "Hawaii Med-QUEST"),                                   
 expect(has("IL-low-fam", "Illinois Medicaid"),                                       "IL Medicaid matches low-income family");
 expect(has("AR-low-fam", "Arkansas Medicaid (ARHOME)"),                              "AR Medicaid matches low-income family");
 expect(has("MI-low-fam", "Michigan Medicaid (Healthy Michigan Plan)"),               "MI Medicaid matches low-income family");
+
+// migration_025 expansion states (CO/CT/DE/ID/IN): no tag gate, low-income family matches.
+expect(has("CO-low-fam", "Health First Colorado (Colorado Medicaid)"),               "CO Medicaid matches low-income family");
+expect(has("CT-low-fam", "HUSKY Health (Connecticut Medicaid)"),                     "CT HUSKY matches low-income family");
+expect(has("DE-low-fam", "Delaware Medicaid"),                                       "DE Medicaid matches low-income family");
+expect(has("ID-low-fam", "Idaho Medicaid"),                                          "ID Medicaid matches low-income family");
+expect(has("IN-low-fam", "Indiana Medicaid (Healthy Indiana Plan)"),                 "IN Medicaid matches low-income family");
 
 // Non-expansion states (GA, MS) Medicaid: gated like FL/AL — must NOT match
 // a non-tagged 22yo, MUST match a single-parent low-income family.
@@ -248,12 +278,14 @@ const ilLiheapProbe = await sb.rpc("get_eligible_programs", {
 expect(ilLiheapProbe.data?.some((p) => p.name === "Illinois LIHEAP"),                 "IL LIHEAP matches HH=2 user at $3000 (200% FPL cap is more generous than federal 150%)");
 
 // Each new state's 211 row is no-constraint — should match every profile in the state
-for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS"]) {
+for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN"]) {
   const stateNames = {
     NV: "Nevada 211", AL: "Alabama 211", AK: "Alaska 211", AZ: "Arizona 211",
     HI: "Hawaii 211 (Aloha United Way)",
     IL: "Illinois 211", AR: "Arkansas 211", GA: "Georgia 211",
     MI: "Michigan 211", MS: "Mississippi 211",
+    CO: "Colorado 211", CT: "Connecticut 211", DE: "Delaware 211",
+    ID: "Idaho 211 (CareLine)", IN: "Indiana 211",
   };
   const name = stateNames[code];
   expect(has(`${code}-22-6k`, name) && has(`${code}-low-fam`, name) && has(`${code}-70-sen`, name),
