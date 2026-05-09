@@ -136,6 +136,14 @@ function ProgramsTableInner({ scope, state, programs, guides }: Props) {
     router.replace(pathname, { scroll: false });
   }
 
+  // Round-trip the landing-page expanded set: the scope card on the landing
+  // forwards `?from=CA,TX,FL`; we read it here and rebuild the landing URL
+  // so "← Programs" returns the user to the same expanded set they came from.
+  const fromParam = searchParams.get("from") ?? "";
+  const backHref = fromParam
+    ? `/admin/programs?expanded=${encodeURIComponent(fromParam)}`
+    : "/admin/programs";
+
   const heading =
     scope === "federal"
       ? "Federal"
@@ -144,7 +152,7 @@ function ProgramsTableInner({ scope, state, programs, guides }: Props) {
   return (
     <div>
       <div className="flex items-center gap-3 mb-1">
-        <Link href="/admin/programs" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+        <Link href={backHref} className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
           ← Programs
         </Link>
         <span className="text-gray-300">/</span>

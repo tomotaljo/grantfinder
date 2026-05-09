@@ -14,9 +14,13 @@ interface Props {
   counts: StateCounts;
   expanded: boolean;
   onToggle: () => void;
+  // Comma-joined list of currently-expanded state codes. Forwarded to scope-
+  // card hrefs as `?from=...` so the scope page's "← Programs" link can
+  // rebuild the landing URL with the same set still expanded.
+  fromQuery: string;
 }
 
-export default function StateRow({ code, name, counts, expanded, onToggle }: Props) {
+export default function StateRow({ code, name, counts, expanded, onToggle, fromQuery }: Props) {
   const total = counts.state + counts.county + counts.city;
   const empty = total === 0;
 
@@ -51,9 +55,9 @@ export default function StateRow({ code, name, counts, expanded, onToggle }: Pro
         <h2 className="text-base font-bold text-gray-900">{name}</h2>
       </button>
       <div className="grid grid-cols-3 gap-3">
-        <ScopeCard code={code} scope="state"  count={counts.state}  label="State" />
-        <ScopeCard code={code} scope="county" count={counts.county} label="County" />
-        <ScopeCard code={code} scope="city"   count={counts.city}   label="City" />
+        <ScopeCard code={code} scope="state"  count={counts.state}  label="State"  fromQuery={fromQuery} />
+        <ScopeCard code={code} scope="county" count={counts.county} label="County" fromQuery={fromQuery} />
+        <ScopeCard code={code} scope="city"   count={counts.city}   label="City"   fromQuery={fromQuery} />
       </div>
     </div>
   );
@@ -74,16 +78,20 @@ function Chevron({ expanded }: { expanded: boolean }) {
 }
 
 function ScopeCard({
-  code, scope, count, label,
+  code, scope, count, label, fromQuery,
 }: {
   code: string;
   scope: "state" | "county" | "city";
   count: number;
   label: string;
+  fromQuery: string;
 }) {
+  const href = fromQuery
+    ? `/admin/programs/${code}/${scope}?from=${encodeURIComponent(fromQuery)}`
+    : `/admin/programs/${code}/${scope}`;
   return (
     <Link
-      href={`/admin/programs/${code}/${scope}`}
+      href={href}
       className="block bg-gray-50 hover:bg-[#e6f7f1] rounded-xl p-3 transition-colors text-center"
     >
       <div className="text-xs font-medium text-gray-500">{label}</div>

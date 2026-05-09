@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import StateRow, { type StateCounts } from "./StateRow";
 
 interface StateEntry {
@@ -13,12 +14,51 @@ interface StateEntry {
 interface Props {
   federalCount: number;
   populated: StateEntry[];
-  emptyStates: StateEntry[];  // counts will be all-zero, kept for type uniformity
+  emptyStates: StateEntry[];
 }
 
-export default function ProgramsLanding({ federalCount, populated, emptyStates }: Props) {
-  // All rows start collapsed on every mount (no "default expanded for populated").
-  const [expandedCodes, setExpandedCodes] = useState<Set<string>>(() => new Set());
+export default function ProgramsLanding(props: Props) {
+  // useSearchParams suspends during prerender; wrap with Suspense per Next.js docs.
+  return (
+    <Suspense fallback={<div className="text-sm text-gray-400">Loading…</div>}>
+      <ProgramsLandingInner {...props} />
+    </Suspense>
+  );
+}
+
+function ProgramsLandingInner({ federalCount, populated, emptyStates }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Initialize from URL on mount. The initializer fn runs once; subsequent
+  // renders use local state. Hard-refresh of /admin/programs (no param)
+  // gives an empty Set → all collapsed.
+  const [expandedCodes, setExpandedCodes] = useState<Set<string>>(() => {
+    const param = searchParams.get("expanded");
+    return new Set(param ? param.split(",").filter(Boolean) : []);
+  });
+
+  // Sync URL when expandedCodes changes. Skip the initial mount sync —
+  // state already matches the URL (we initialized from it), so replacing
+  // would be a no-op that just adds router noise.
+  const skipNextSync = useRef(true);
+  useEffect(() => {
+    if (skipNextSync.current) {
+      skipNextSync.current = false;
+      return;
+    }
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    if (expandedCodes.size === 0) {
+      params.delete("expanded");
+    } else {
+      // Sort so toggling A then B produces the same URL as B then A.
+      params.set("expanded", [...expandedCodes].sort().join(","));
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedCodes]);
 
   const anyExpanded = expandedCodes.size > 0;
 
@@ -31,11 +71,9 @@ export default function ProgramsLanding({ federalCount, populated, emptyStates }
 
   const collapseAll = () => setExpandedCodes(new Set());
 
-  // Memoized lookup avoids creating a new closure per render in the row loop
-  const isExpanded = useMemo(
-    () => (code: string) => expandedCodes.has(code),
-    [expandedCodes]
-  );
+  // Forwarded to scope cards as ?from=CA,TX,FL so the scope page's "← Programs"
+  // link can rebuild the landing URL with the same set still expanded.
+  const fromQuery = anyExpanded ? [...expandedCodes].sort().join(",") : "";
 
   return (
     <div>
@@ -70,7 +108,6 @@ export default function ProgramsLanding({ federalCount, populated, emptyStates }
         </div>
       </div>
 
-      {/* Federal banner — always full width at top */}
       <Link
         href="/admin/programs/federal"
         className="block bg-white rounded-2xl border border-gray-200 hover:border-[#1D9E75] hover:shadow-sm transition p-5 mb-6"
@@ -96,8 +133,9 @@ export default function ProgramsLanding({ federalCount, populated, emptyStates }
             code={s.code}
             name={s.name}
             counts={s.counts}
-            expanded={isExpanded(s.code)}
+            expanded={expandedCodes.has(s.code)}
             onToggle={() => toggle(s.code)}
+            fromQuery={fromQuery}
           />
         ))}
 
@@ -113,8 +151,9 @@ export default function ProgramsLanding({ federalCount, populated, emptyStates }
                   code={s.code}
                   name={s.name}
                   counts={s.counts}
-                  expanded={isExpanded(s.code)}
+                  expanded={expandedCodes.has(s.code)}
                   onToggle={() => toggle(s.code)}
+                  fromQuery={fromQuery}
                 />
               ))}
             </div>
