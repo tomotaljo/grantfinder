@@ -90,7 +90,7 @@ export default async function ProgramsLandingPage() {
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2">
               States with no programs yet
             </h3>
-            <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+            <div className="flex flex-col gap-1">
               {emptyStates.map((s) => (
                 <StateRow
                   key={s.code}
