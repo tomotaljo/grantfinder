@@ -53,6 +53,12 @@ const profiles = [
   { id: "AZ-22-6k",    desc: "AZ, 22, $6000/mo, []",                           state: "AZ", age: 22, income: 6000, sit: [] },
   { id: "AZ-low-fam",  desc: "AZ, 25, $800/mo, [single_parent, low_income]",   state: "AZ", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
   { id: "AZ-70-sen",   desc: "AZ, 70, $1000/mo, [senior]",                     state: "AZ", age: 70, income: 1000, sit: ["senior"] },
+
+  // Hawaii (added with migration_023). Slightly higher incomes per profile
+  // since HI has higher cost-of-living + higher TANF cap ($1,500).
+  { id: "HI-22-6k",    desc: "HI, 22, $6000/mo, []",                           state: "HI", age: 22, income: 6000, sit: [] },
+  { id: "HI-low-fam",  desc: "HI, 25, $1200/mo, [single_parent, low_income]",  state: "HI", age: 25, income: 1200, sit: ["single_parent", "low_income"] },
+  { id: "HI-70-sen",   desc: "HI, 70, $1000/mo, [senior]",                     state: "HI", age: 70, income: 1000, sit: ["senior"] },
 ];
 
 const all = {};
@@ -168,7 +174,7 @@ expect(!hhProbe1.data.some((p) => p.name === SNAP_FED),                         
 // ── NV/AL/AK/AZ coverage (migration_022) ────────────────────────────────
 
 // Working-age $6k profiles: small result sets, no senior/disability leaks.
-for (const code of ["NV", "AL", "AK", "AZ"]) {
+for (const code of ["NV", "AL", "AK", "AZ", "HI"]) {
   const rows = all[`${code}-22-6k`];
   expect(rows.length <= 4,                                                           `${code}-22-6k row count ≤ 4 (got ${rows.length})`);
   expect(!rows.some((p) => sit(p).includes("senior") || sit(p).includes("disability")),
@@ -193,10 +199,18 @@ expect(has("NV-70-sen", "Nevada Aging and Disability Services Division"),       
 expect(has("AL-70-sen", "Alabama Department of Senior Services"),                   "AL Senior Services matches AL 70yo with senior tag");
 expect(has("AK-70-sen", "Alaska Senior and Disabilities Services"),                 "AK SDS matches AK 70yo with senior tag");
 expect(has("AZ-70-sen", "Arizona Aging and Adult Services"),                        "AZ Aging and Adult Services matches AZ 70yo with senior tag");
+expect(has("HI-70-sen", "Hawaii Executive Office on Aging"),                        "HI EOA matches HI 70yo with senior tag");
+
+// Hawaii Med-QUEST is an expansion-state Medicaid (no required tags) — must
+// match a low-income family.
+expect(has("HI-low-fam", "Hawaii Med-QUEST"),                                        "HI Med-QUEST matches low-income family");
 
 // Each new state's 211 row is no-constraint — should match every profile in the state
-for (const code of ["NV", "AL", "AK", "AZ"]) {
-  const stateNames = { NV: "Nevada 211", AL: "Alabama 211", AK: "Alaska 211", AZ: "Arizona 211" };
+for (const code of ["NV", "AL", "AK", "AZ", "HI"]) {
+  const stateNames = {
+    NV: "Nevada 211", AL: "Alabama 211", AK: "Alaska 211", AZ: "Arizona 211",
+    HI: "Hawaii 211 (Aloha United Way)",
+  };
   const name = stateNames[code];
   expect(has(`${code}-22-6k`, name) && has(`${code}-low-fam`, name) && has(`${code}-70-sen`, name),
                                                                                       `${name} matches all ${code} profiles`);
