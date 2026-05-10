@@ -147,6 +147,13 @@ const profiles = [
   { id: "NC-22-6k",    desc: "NC, 22, $6000/mo, []",                           state: "NC", age: 22, income: 6000, sit: [] },
   { id: "NC-low-fam",  desc: "NC, 25, $700/mo, [single_parent, low_income]",   state: "NC", age: 25, income: 700,  sit: ["single_parent", "low_income"] },
   { id: "NC-70-sen",   desc: "NC, 70, $1000/mo, [senior]",                     state: "NC", age: 70, income: 1000, sit: ["senior"] },
+
+  // texas-chip gate fix (migration_031). Pre-fix: TX-CHIP matched any TX
+  // user under $5300/mo regardless of household composition. Post-fix:
+  // gated on single_parent.
+  { id: "TX-30-2.5k-nokids", desc: "TX, 30, $2500/mo, [], hh=1 (childless adult)", state: "TX", age: 30, income: 2500, sit: [], hh: 1 },
+  { id: "TX-25-2k-sp",       desc: "TX, 25, $2000/mo, [single_parent], hh=2",     state: "TX", age: 25, income: 2000, sit: ["single_parent"], hh: 2 },
+  { id: "TX-30-4.5k-sp",     desc: "TX, 30, $4500/mo, [single_parent], hh=4",     state: "TX", age: 30, income: 4500, sit: ["single_parent"], hh: 4 },
 ];
 
 const all = {};
@@ -437,6 +444,15 @@ const boundaryAt   = await sb.rpc("get_eligible_programs", { p_state: "AL", p_mo
 const boundaryOver = await sb.rpc("get_eligible_programs", { p_state: "AL", p_monthly_income: 1730, p_age: 30, p_situation: [], p_household_size: 1 });
 expect(boundaryAt.data.some((p) => p.name === SNAP_AL),                              "Alabama SNAP includes AL HH=1 user at 2026 FPL boundary income $1729");
 expect(!boundaryOver.data.some((p) => p.name === SNAP_AL),                           "Alabama SNAP excludes AL HH=1 user at $1730 (just over 130% FPL)");
+
+// ── texas-chip gate fix (migration_031) ─────────────────────────────────
+// Pre-fix: Texas CHIP matched any TX user under $5300/mo regardless of
+// household composition (including childless adults). Post-fix: gated on
+// single_parent like every other family-targeted row.
+const TX_CHIP = "Texas CHIP (Children's Health Insurance Program)";
+expect(!has("TX-30-2.5k-nokids", TX_CHIP),                                          "TX CHIP excluded for HH=1 childless adult, $2500/mo, no tags (the false-positive fix)");
+expect(has("TX-25-2k-sp", TX_CHIP),                                                 "TX CHIP matches HH=2 single parent at $2000/mo");
+expect(has("TX-30-4.5k-sp", TX_CHIP),                                               "TX CHIP matches HH=4 single parent at $4500/mo");
 
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
