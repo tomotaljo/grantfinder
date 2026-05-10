@@ -5,6 +5,38 @@ this file is the source of truth until one is set up.
 
 ## Done
 
+### 50-state + DC catalog coverage — landed across migrations 029-035 (2026-05)
+Catalog now indexes all 50 states plus DC, 8 program categories per
+jurisdiction (Medicaid, SNAP, TANF, LIHEAP, Unemployment, Veterans,
+Aging, 211). Non-expansion Medicaid states gated on
+`["single_parent","pregnant","disability"]`: FL, AL, GA, MS, KS, TN,
+WY, SC. Wisconsin is a hybrid case (BadgerCare 1115 waiver capped at
+100% FPL for adults, modeled at 100% FPL with `important_notes`
+explaining the 100-138% gap). Recent expansions carry
+`important_notes` flags for annual re-verification: NC (Dec 2023),
+MO (2021-2022 via Amendment 2), SD (July 2023 via Constitutional
+Amendment D). Test harness expanded to 344 watchpoints, all green.
+
+### Federal/state SNAP + LIHEAP duplication fix — landed in migration_030 (2026-05)
+Federal SNAP and federal LIHEAP rows were duplicating their state-row
+equivalents in 34/34 catalog states (a TX user saw both "SNAP - SNAP"
+and "Texas SNAP (Lone Star Card)" with near-identical content). Both
+federal rows deactivated. Federal Medicare Extra Help, Medicare Savings
+Program, Weatherization, SSI, and Pell Grant audited as not-real-
+duplicates and kept active. Test harness migrated from `SNAP_FED`
+constant to `SNAP_AL = "Alabama SNAP (Food Assistance)"` for HH-
+sensitivity and FPL-boundary watchpoints (state-scope, 130% FPL,
+no required_situations).
+
+### texas-chip false-positive gate fix — landed in migration_031 (2026-05)
+Pre-fix: texas-chip had `required_situations=[]`, so any TX user under
+the $5300/mo flat cap matched, including childless adults — confirmed
+via HH=1, no tags, $2500/mo browser spot-check that surfaced Texas CHIP
+inappropriately. Post-fix: gated on `single_parent`, matching the
+convention of texas-wic, texas-tanf, texas-child-care-services,
+texas-summer-ebt, and all 27 state TANF rows. Three new watchpoints
+(one negative, two positive) confirm the fix.
+
 ### FPL-aware income filter — landed in migration_020 (2026-05)
 Income caps on FPL-eligible programs now scale by household size. RPC
 reads `max_income_percent_fpl` (when present) and compares user income
@@ -60,13 +92,13 @@ were kept — those are consumption support.
 
 ### State-level rental and eviction assistance — Phase 1
 After migration_028 deactivated the homebuyer-focused state housing
-finance rows, 21+ of currently-populated states have **no state-administered
-rental assistance row**. Users in those states only see federal options
-plus the 211 row for housing help.
+finance rows, every state in the catalog (now all 50 + DC) has **no
+state-administered rental assistance row**. Users in those states see
+the 211 row as the only housing-help pointer.
 
-**Goal:** every populated state has at least one state-administered
-rental assistance row, or honest documentation that no such program
-exists ("no state-administered program — call 211").
+**Goal:** every state has at least one state-administered rental
+assistance row, or honest documentation that no such program exists
+("no state-administered program — call 211").
 
 **Scope:** state-level only. County and city-level are separate phases
 (see below). State scope means programs administered statewide, or by
@@ -110,7 +142,7 @@ If a state has no programs meeting all 5 criteria, add an honest
 manufacturing a marginal row.
 
 **Effort:** ~50-70 minutes of human verification time per state,
-~25-30 hours total across 24 states. 10-12 focused sessions.
+~40-55 hours total across 50 states + DC. 17-20 focused sessions.
 
 **Pilot recommendation:** Run California first as a single-state pilot
 to calibrate the methodology before scaling. The catalog owner knows
@@ -291,11 +323,9 @@ WIC/TEFAP at 185%, etc.).
 
 ## Catalog completeness
 
-### Information & Referral coverage
-Every state in the catalog should have a "[State] 211" row when added:
-`scope=state`, `jurisdiction_name=NULL`, `name=[State Name] 211`,
-`category="Information & Referral"`, `apply_url=` official 211 site,
-`phone=211`, `benefit_value=0`. Currently 4 states (CA, TX, FL, NY).
+(Section retained for reference. Information & Referral coverage is
+now complete — every state + DC has a `[State] 211` row as of
+migration_035.)
 
 ## Admin / form
 
