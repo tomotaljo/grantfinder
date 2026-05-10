@@ -189,8 +189,9 @@ Shape doesn't change year-to-year — only the literal values.
 Walk every Medicaid row in the catalog and confirm:
 - **Expansion status** — has any non-expansion state expanded? Has any
   expansion state contracted? Adjust the row's required_situations gate.
-  (At time of writing: FL, AL, GA, MS, KS, TN are non-expansion; everyone
-  else in the catalog is expansion.)
+  (At time of writing: FL, AL, GA, MS, KS, TN, WY are non-expansion;
+  everyone else in the catalog is expansion. NC expanded December 2023 —
+  the row carries an `important_notes` flag to that effect for re-verification.)
 - **Indiana HIP work requirement status** — Healthy Indiana Plan has had
   on-again/off-again work requirements over the years; current row
   assumes none. Re-check.
