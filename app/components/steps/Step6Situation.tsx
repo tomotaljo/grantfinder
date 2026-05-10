@@ -8,7 +8,7 @@ const OPTIONS = [
   { value: "disability", label: "Living with a disability" },
   { value: "pregnant", label: "Pregnant or recently gave birth" },
   { value: "student", label: "I am currently enrolled in college or vocational school" },
-  { value: "single_parent", label: "Single parent" },
+  { value: "with_children", label: "I have a child under 18 in my household" },
   { value: "senior", label: "Senior citizen (65+)" },
   { value: "homeless", label: "Experiencing housing instability" },
   { value: "rural", label: "Living in a rural area" },

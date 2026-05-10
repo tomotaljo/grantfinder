@@ -42,6 +42,13 @@ export default function Quiz() {
       const saved = localStorage.getItem("quiz-answers");
       if (!saved) return;
       const parsed = JSON.parse(saved) as Answers;
+      // Backwards compat (migration_036, 2026-05): single_parent was renamed
+      // to with_children. Map old saved sessions and dedupe.
+      if (Array.isArray(parsed.situation)) {
+        parsed.situation = [...new Set(parsed.situation.map(
+          (s) => (s === "single_parent" ? "with_children" : s),
+        ))];
+      }
       setAnswers(parsed);
       setDone(true);
     } catch {}

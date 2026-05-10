@@ -5,6 +5,26 @@ this file is the source of truth until one is set up.
 
 ## Done
 
+### Schema fix: with_children replaces single_parent — landed in migration_036 (2026-05)
+The `single_parent` tag was being used as a proxy for "household includes
+a minor child" across 62 catalog rows: 8 non-expansion Medicaid rows,
+50 TANF/state cash assistance rows, plus texas-wic, texas-chip,
+texas-child-care-services, and texas-summer-ebt. None of those programs
+actually require the user to be unmarried — they require a minor child
+in the household. The `single_parent` proxy was false-negativing
+two-parent low-income families with kids.
+
+migration_036 swapped the tag in every affected row's
+`required_situations`, preserving all other tags. Quiz UI updated to
+ask "I have a child under 18 in my household" → `with_children`.
+Backwards-compat mapping in `Quiz.tsx` converts `single_parent` →
+`with_children` for resumed localStorage sessions and dedupes.
+
+Verified by extending the harness to use `with_children`, running
+pre-migration to confirm 10 expected failures (8 non-expansion Medicaid
+positives + 2 TX CHIP positives), then post-migration to confirm
+344/344 green.
+
 ### 50-state + DC catalog coverage — landed across migrations 029-035 (2026-05)
 Catalog now indexes all 50 states plus DC, 8 program categories per
 jurisdiction (Medicaid, SNAP, TANF, LIHEAP, Unemployment, Veterans,
@@ -249,23 +269,6 @@ Walk every Medicaid row in the catalog and confirm:
   income thresholds (FPL% vs SMI%, current year's tables).
 
 ## Eligibility & data quality
-
-### Schema gap: no `with_children` situation tag
-WIC, TANF, CHIP, childcare, and school-meal rows currently use `single_parent`
-as a proxy gate for "household includes a minor child." That false-negatives
-two-parent low-income families with kids. The quiz has no `with_children`
-or `has_minor_child` tag a married parent can select.
-
-**Fix shape:**
-1. Add a `with_children` situation tag to the quiz (Yes/No: "Do you have
-   a child under 18 in your household?").
-2. Re-gate the affected rows: 1 WIC + 1 childcare + 1 school-meal +
-   27 TANF + 1 CHIP (texas-chip) = 31 rows today, growing as more states
-   are seeded.
-3. Drop `single_parent` from those rows where it's currently a proxy (it's
-   a strict subset of `with_children`, so keeping both is redundant —
-   though `single_parent` may stay as a separate distinct tag if any row
-   is genuinely single-parent-only).
 
 ### "Potential Benefit" text doesn't adapt to household size
 Every state SNAP row says "Up to ~$975/month for a family of four"
