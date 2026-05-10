@@ -39,20 +39,30 @@ export default function Step6Situation({ values, onChange, onNext, onBack, house
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {OPTIONS.map((opt) => {
-          // with_children is contradictory with HH=1. Render a non-interactive
-          // notice in place of the checkbox so users see the option exists
-          // and learn that children count toward household size.
+          // with_children is contradictory with HH=1. Render the option as
+          // a real <button disabled> so it's visible in the grid (users see
+          // the option exists and learn that children count toward household
+          // size) but non-interactive. Opacity-reduced, keyboard-skipped via
+          // disabled, screen-reader-announced as disabled.
           if (opt.value === "with_children" && householdSize === "1") {
             return (
-              <div
+              <button
                 key={opt.value}
-                className="flex items-center gap-3 py-3 px-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-left"
+                type="button"
+                disabled
                 aria-disabled="true"
+                className="flex items-start gap-3 py-3 px-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-left opacity-60 cursor-not-allowed"
               >
-                <span className="text-xs leading-snug text-gray-500">
-                  Household size must include children. Go back to update if you have a child.
-                </span>
-              </div>
+                <div className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 border-gray-300 bg-white mt-0.5" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-gray-700">
+                    {opt.label}
+                  </span>
+                  <span className="text-xs leading-snug text-gray-500">
+                    Update your household size to 2 or more to enable this option.
+                  </span>
+                </div>
+              </button>
             );
           }
 
