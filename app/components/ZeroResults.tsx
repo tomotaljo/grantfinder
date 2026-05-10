@@ -56,7 +56,7 @@ export default function ZeroResults({ answers, onEditAnswers }: Props) {
       </h1>
       <p className="text-base sm:text-lg text-gray-600 max-w-xl mx-auto leading-relaxed mb-8">
         We&rsquo;re still building this — your situation
-        {answers.state ? ` in ${answers.state}` : ""} doesn&rsquo;t line up with anything we&rsquo;ve
+        {answers.state ? ` in ${answers.state} ` : " "}doesn&rsquo;t line up with anything we&rsquo;ve
         vetted yet. That doesn&rsquo;t mean help isn&rsquo;t out there. It just means we
         haven&rsquo;t catalogued the right program for you yet.
       </p>
