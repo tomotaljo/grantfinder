@@ -246,18 +246,24 @@ expect(nyState22.length === 0,                                                  
 // Household-size sensitivity (migration_020): FPL-aware income filter now
 // scales caps by household size. Was a no-op until migration_019 plumbed
 // the param; now it actually affects results.
-const SNAP_FED = "SNAP - Supplemental Nutrition Assistance Program";
+//
+// Migration_030 deactivated the federal SNAP row, so these probes now
+// anchor on Alabama SNAP (state-scope, 130% FPL, no required_situations) —
+// same FPL boundary the federal row used to enforce. AL was chosen because
+// it's a 130%-FPL row in a state with mostly tag-gated other programs, so
+// the boundary-crossing of SNAP itself is the dominant signal.
+const SNAP_AL = "Alabama SNAP (Food Assistance)";
 
-const hhBase = { p_state: "TX", p_monthly_income: 3000, p_age: 30, p_situation: [] };
+const hhBase = { p_state: "AL", p_monthly_income: 3000, p_age: 30, p_situation: [] };
 const hhProbe1 = await sb.rpc("get_eligible_programs", { ...hhBase, p_household_size: 1 });
 const hhProbe4 = await sb.rpc("get_eligible_programs", { ...hhBase, p_household_size: 4 });
 expect(!hhProbe1.error && !hhProbe4.error,                                          "RPC accepts p_household_size for HH=1 and HH=4");
-expect(hhProbe4.data.length > hhProbe1.data.length,                                  "HH=4 at $3000 matches more programs than HH=1 (FPL caps scale up)");
+expect(hhProbe4.data.length > hhProbe1.data.length,                                  "AL HH=4 at $3000 matches more programs than HH=1 (FPL caps scale up)");
 
-// Headline bug fix: HH=4 family at $3000/mo now matches federal SNAP.
+// Headline bug fix: HH=4 family at $3000/mo matches the state SNAP row.
 // Cap = 130% × $2600 (HH=4 FPL) = $3380. Was a false negative pre-migration_020.
-expect(hhProbe4.data.some((p) => p.name === SNAP_FED),                               "Federal SNAP matches HH=4 at $3000 (the false-negative fix)");
-expect(!hhProbe1.data.some((p) => p.name === SNAP_FED),                              "Federal SNAP does NOT match HH=1 at $3000 (130% × $1330 = $1729 cap)");
+expect(hhProbe4.data.some((p) => p.name === SNAP_AL),                                "Alabama SNAP matches AL HH=4 at $3000 (FPL filter passes)");
+expect(!hhProbe1.data.some((p) => p.name === SNAP_AL),                               "Alabama SNAP does NOT match AL HH=1 at $3000 (130% × $1330 = $1729 cap)");
 
 // ── NV/AL/AK/AZ coverage (migration_022) ────────────────────────────────
 
@@ -420,15 +426,17 @@ for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", 
                                                                                       `${name} matches all ${code} profiles`);
 }
 
-// FPL-percent boundary: HH=1, federal SNAP cap = (1330 * 1.30)::int = 1729
+// FPL-percent boundary: HH=1, 130% FPL cap = (1330 * 1.30)::int = 1729
 // per 2026 federal poverty guidelines. At $1729 user passes (≤); at $1730
-// user fails. Inclusive at the threshold.
+// user fails. Inclusive at the threshold. Anchored on Alabama SNAP since
+// migration_030 deactivated the federal SNAP row. AL SNAP is a clean
+// 130%-FPL row.
 // (Refresh these literals in January when current_fpl_monthly() is updated
 // to the new year's guidelines — see TODO.md.)
-const boundaryAt   = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1729, p_age: 30, p_situation: [], p_household_size: 1 });
-const boundaryOver = await sb.rpc("get_eligible_programs", { p_state: "TX", p_monthly_income: 1730, p_age: 30, p_situation: [], p_household_size: 1 });
-expect(boundaryAt.data.some((p) => p.name === SNAP_FED),                             "Federal SNAP includes HH=1 user at 2026 FPL boundary income $1729");
-expect(!boundaryOver.data.some((p) => p.name === SNAP_FED),                          "Federal SNAP excludes HH=1 user at $1730 (just over 130% FPL)");
+const boundaryAt   = await sb.rpc("get_eligible_programs", { p_state: "AL", p_monthly_income: 1729, p_age: 30, p_situation: [], p_household_size: 1 });
+const boundaryOver = await sb.rpc("get_eligible_programs", { p_state: "AL", p_monthly_income: 1730, p_age: 30, p_situation: [], p_household_size: 1 });
+expect(boundaryAt.data.some((p) => p.name === SNAP_AL),                              "Alabama SNAP includes AL HH=1 user at 2026 FPL boundary income $1729");
+expect(!boundaryOver.data.some((p) => p.name === SNAP_AL),                           "Alabama SNAP excludes AL HH=1 user at $1730 (just over 130% FPL)");
 
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
