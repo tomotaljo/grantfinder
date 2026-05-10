@@ -189,7 +189,7 @@ Shape doesn't change year-to-year — only the literal values.
 Walk every Medicaid row in the catalog and confirm:
 - **Expansion status** — has any non-expansion state expanded? Has any
   expansion state contracted? Adjust the row's required_situations gate.
-  (At time of writing: FL, AL, GA, MS, KS, TN, WY are non-expansion;
+  (At time of writing: FL, AL, GA, MS, KS, TN, WY, SC are non-expansion;
   everyone else in the catalog is expansion. NC expanded December 2023 —
   the row carries an `important_notes` flag to that effect for re-verification.)
 - **Indiana HIP work requirement status** — Healthy Indiana Plan has had
@@ -214,6 +214,36 @@ Walk every Medicaid row in the catalog and confirm:
   income thresholds (FPL% vs SMI%, current year's tables).
 
 ## Eligibility & data quality
+
+### Schema gap: no `with_children` situation tag
+WIC, TANF, CHIP, childcare, and school-meal rows currently use `single_parent`
+as a proxy gate for "household includes a minor child." That false-negatives
+two-parent low-income families with kids. The quiz has no `with_children`
+or `has_minor_child` tag a married parent can select.
+
+**Fix shape:**
+1. Add a `with_children` situation tag to the quiz (Yes/No: "Do you have
+   a child under 18 in your household?").
+2. Re-gate the affected rows: 1 WIC + 1 childcare + 1 school-meal +
+   27 TANF + 1 CHIP (texas-chip) = 31 rows today, growing as more states
+   are seeded.
+3. Drop `single_parent` from those rows where it's currently a proxy (it's
+   a strict subset of `with_children`, so keeping both is redundant —
+   though `single_parent` may stay as a separate distinct tag if any row
+   is genuinely single-parent-only).
+
+### "Potential Benefit" text doesn't adapt to household size
+Every state SNAP row says "Up to ~$975/month for a family of four"
+regardless of the user's actual household size. Same hard-coded language
+across other income-scaled programs. For HH=1 it's misleading (~$292/mo
+max); for HH=4 accurate; for HH=2/HH=8 misleading.
+
+**Fix shape:** make the displayed `potential_benefit` text adaptive at
+render time based on the user's household_size answer. Either compute it
+client-side from a max-per-household-member table, or store an array of
+benefit values keyed by household size on each row. Affects SNAP,
+WIC, school meals, LIHEAP, and any other row whose dollar figure scales
+with household size.
 
 ### Pell Grant slug rename
 `california-pell-grant-federal-student-aid` is a federal program with a
