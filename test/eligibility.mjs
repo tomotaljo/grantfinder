@@ -187,6 +187,21 @@ const profiles = [
   { id: "NH-22-6k",    desc: "NH, 22, $6000/mo, []",                           state: "NH", age: 22, income: 6000, sit: [] },
   { id: "NH-low-fam",  desc: "NH, 25, $1300/mo, [single_parent, low_income]",  state: "NH", age: 25, income: 1300, sit: ["single_parent", "low_income"] },
   { id: "NH-70-sen",   desc: "NH, 70, $1000/mo, [senior]",                     state: "NH", age: 70, income: 1000, sit: ["senior"] },
+
+  // RI/SD/UT/VT coverage (added with migration_034). All four are expansion
+  // states — SD recent (Constitutional Amendment D 2022, effective Jul 2023).
+  { id: "RI-22-6k",    desc: "RI, 22, $6000/mo, []",                           state: "RI", age: 22, income: 6000, sit: [] },
+  { id: "RI-low-fam",  desc: "RI, 25, $1100/mo, [single_parent, low_income]",  state: "RI", age: 25, income: 1100, sit: ["single_parent", "low_income"] },
+  { id: "RI-70-sen",   desc: "RI, 70, $1000/mo, [senior]",                     state: "RI", age: 70, income: 1000, sit: ["senior"] },
+  { id: "SD-22-6k",    desc: "SD, 22, $6000/mo, []",                           state: "SD", age: 22, income: 6000, sit: [] },
+  { id: "SD-low-fam",  desc: "SD, 25, $900/mo, [single_parent, low_income]",   state: "SD", age: 25, income: 900,  sit: ["single_parent", "low_income"] },
+  { id: "SD-70-sen",   desc: "SD, 70, $1000/mo, [senior]",                     state: "SD", age: 70, income: 1000, sit: ["senior"] },
+  { id: "UT-22-6k",    desc: "UT, 22, $6000/mo, []",                           state: "UT", age: 22, income: 6000, sit: [] },
+  { id: "UT-low-fam",  desc: "UT, 25, $800/mo, [single_parent, low_income]",   state: "UT", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
+  { id: "UT-70-sen",   desc: "UT, 70, $1000/mo, [senior]",                     state: "UT", age: 70, income: 1000, sit: ["senior"] },
+  { id: "VT-22-6k",    desc: "VT, 22, $6000/mo, []",                           state: "VT", age: 22, income: 6000, sit: [] },
+  { id: "VT-low-fam",  desc: "VT, 25, $1300/mo, [single_parent, low_income]",  state: "VT", age: 25, income: 1300, sit: ["single_parent", "low_income"] },
+  { id: "VT-70-sen",   desc: "VT, 70, $1000/mo, [senior]",                     state: "VT", age: 70, income: 1000, sit: ["senior"] },
 ];
 
 const all = {};
@@ -308,7 +323,7 @@ expect(!hhProbe1.data.some((p) => p.name === SNAP_AL),                          
 // ── NV/AL/AK/AZ coverage (migration_022) ────────────────────────────────
 
 // Working-age $6k profiles: small result sets, no senior/disability leaks.
-for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH"]) {
+for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH", "RI", "SD", "UT", "VT"]) {
   const rows = all[`${code}-22-6k`];
   expect(rows.length <= 4,                                                           `${code}-22-6k row count ≤ 4 (got ${rows.length})`);
   expect(!rows.some((p) => sit(p).includes("senior") || sit(p).includes("disability")),
@@ -372,6 +387,10 @@ expect(has("MN-70-sen", "Minnesota Board on Aging"),                            
 expect(has("MO-70-sen", "Missouri Senior and Disability Services"),                 "MO Senior Services matches MO 70yo with senior tag");
 expect(has("NM-70-sen", "New Mexico Aging and Long-Term Services Department (ALTSD)"), "NM ALTSD matches NM 70yo with senior tag");
 expect(has("NH-70-sen", "New Hampshire Bureau of Elderly and Adult Services (BEAS)"),  "NH BEAS matches NH 70yo with senior tag");
+expect(has("RI-70-sen", "Rhode Island Office of Healthy Aging (OHA)"),              "RI OHA matches RI 70yo with senior tag");
+expect(has("SD-70-sen", "South Dakota Adult Services and Aging"),                   "SD Adult Services & Aging matches SD 70yo with senior tag");
+expect(has("UT-70-sen", "Utah Aging and Adult Services"),                           "UT Aging matches UT 70yo with senior tag");
+expect(has("VT-70-sen", "Vermont Department of Disabilities, Aging and Independent Living (DAIL)"), "VT DAIL matches VT 70yo with senior tag");
 
 // Hawaii Med-QUEST is an expansion-state Medicaid (no required tags) — must
 // match a low-income family.
@@ -456,6 +475,17 @@ expect(has("NH-low-fam", "Granite Advantage Health Care Program (NH Medicaid)"),
 expect(has("MO-70-sen", "MO HealthNet (Missouri Medicaid)"),                         "MO HealthNet matches MO 70yo (expansion state, no tag gate)");
 expect(has("MO-70-sen", "Medicare Extra Help - Part D Low Income Subsidy"),          "MO senior also matches federal Medicare Extra Help");
 
+// migration_034 expansion states (RI/SD/UT/VT): no tag gate on Medicaid.
+expect(has("RI-low-fam", "Rhode Island Medicaid"),                                   "RI Medicaid matches low-income family");
+expect(has("SD-low-fam", "South Dakota Medicaid"),                                   "SD Medicaid matches low-income family — regression check on SD's July 2023 expansion");
+expect(has("UT-low-fam", "Utah Medicaid"),                                           "UT Medicaid matches low-income family");
+expect(has("VT-low-fam", "Vermont Medicaid (Green Mountain Care)"),                  "VT Medicaid matches low-income family");
+
+// SD senior (expansion as of July 2023, ungated): state Medicaid + federal Medicare both surface.
+// If SD ever rolls expansion back, this watchpoint will catch the regression.
+expect(has("SD-70-sen", "South Dakota Medicaid"),                                    "SD Medicaid matches SD 70yo (expansion state, no tag gate)");
+expect(has("SD-70-sen", "Medicare Extra Help - Part D Low Income Subsidy"),          "SD senior also matches federal Medicare Extra Help");
+
 // Ohio HEAP at 175% FPL — verify the boundary. HH=2 cap = (1803 * 1.75)::int = 3155.
 // Test profile: HH=2 user at $3000 should match (within 175% but over 150%).
 const ohHeap = await sb.rpc("get_eligible_programs", { p_state: "OH", p_monthly_income: 3000, p_age: 30, p_situation: [], p_household_size: 2 });
@@ -478,7 +508,7 @@ const ilLiheapProbe = await sb.rpc("get_eligible_programs", {
 expect(ilLiheapProbe.data?.some((p) => p.name === "Illinois LIHEAP"),                 "IL LIHEAP matches HH=2 user at $3000 (200% FPL cap is more generous than federal 150%)");
 
 // Each new state's 211 row is no-constraint — should match every profile in the state
-for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH"]) {
+for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH", "RI", "SD", "UT", "VT"]) {
   const stateNames = {
     NV: "Nevada 211", AL: "Alabama 211", AK: "Alaska 211", AZ: "Arizona 211",
     HI: "Hawaii 211 (Aloha United Way)",
@@ -496,6 +526,8 @@ for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", 
     OR: "Oregon 211 (211info)", SC: "South Carolina 211",
     MN: "Minnesota 211 (United Way)", MO: "Missouri 211",
     NM: "New Mexico 211", NH: "New Hampshire 211",
+    RI: "Rhode Island 211 (United Way)", SD: "South Dakota 211 (Helpline Center)",
+    UT: "Utah 211 (United Way)", VT: "Vermont 211",
   };
   const name = stateNames[code];
   expect(has(`${code}-22-6k`, name) && has(`${code}-low-fam`, name) && has(`${code}-70-sen`, name),
