@@ -222,6 +222,12 @@ const profiles = [
   { id: "DC-22-6k",    desc: "DC, 22, $6000/mo, []",                           state: "DC", age: 22, income: 6000, sit: [] },
   { id: "DC-low-fam",  desc: "DC, 25, $1200/mo, [with_children, low_income]",  state: "DC", age: 25, income: 1200, sit: ["with_children", "low_income"] },
   { id: "DC-70-sen",   desc: "DC, 70, $1000/mo, [senior]",                     state: "DC", age: 70, income: 1000, sit: ["senior"] },
+
+  // migration_038 regression checks. Senior tag was a proxy for min_age;
+  // low_income tag was a proxy for income cap (and worse, OR-semantics
+  // let it widen TANF gates to childless adults).
+  { id: "AR-70-notag",       desc: "AR, 70, $1000/mo, [], hh=1 (senior age, no senior tag)",      state: "AR", age: 70, income: 1000, sit: [],            hh: 1 },
+  { id: "TX-30-low-nokids",  desc: "TX, 30, $200/mo, [low_income], hh=1 (childless low-income)",  state: "TX", age: 30, income: 200,  sit: ["low_income"], hh: 1 },
 ];
 
 const all = {};
@@ -420,16 +426,18 @@ for (const cat of REQUIRED_CATEGORIES) {
   );
 }
 
-// Tag-level invariant 6: every Cash Assistance row has BOTH with_children AND low_income.
+// Tag-level invariant 6: every Cash Assistance row has 'with_children' in
+// required_situations. (Updated in migration_038: previously required BOTH
+// with_children AND low_income; the low_income requirement was dropped
+// because the income cap field is source of truth for means-testing and
+// OR-semantics on the tag was actively widening the gate to childless
+// low-income adults.)
 {
   const cashRows = (catalogRows ?? []).filter((r) => r.category === "Cash Assistance");
-  const bad = cashRows.filter((r) => {
-    const tags = r.eligibility_rules?.required_situations ?? [];
-    return !(tags.includes("with_children") && tags.includes("low_income"));
-  });
+  const bad = cashRows.filter((r) => !((r.eligibility_rules?.required_situations ?? []).includes("with_children")));
   expectStructural(
     bad.length === 0,
-    `Every Cash Assistance row has BOTH with_children AND low_income${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+    `Every Cash Assistance row has 'with_children' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
   );
 }
 
@@ -465,14 +473,62 @@ for (const cat of REQUIRED_CATEGORIES) {
   );
 }
 
-// Tag-level invariant 10: every Cash Assistance row has 'low_income' (subset
-// of #6 but kept separate so the failure label is specific).
+// Tag-level invariant 10: REMOVED in migration_038. Cash Assistance rows
+// no longer carry low_income because (a) it's redundant with the income
+// cap and (b) the OR-semantics meant a childless low-income adult would
+// match TANF (false positive). Replaced by tag-level invariants 11-13.
+
+// Tag-level invariant 11: rows with min_age set should NOT have 'senior'
+// in required_situations. Catches drift back toward the proxy pattern
+// migration_038 fixed.
 {
-  const cashRows = (catalogRows ?? []).filter((r) => r.category === "Cash Assistance");
-  const bad = cashRows.filter((r) => !((r.eligibility_rules?.required_situations ?? []).includes("low_income")));
+  const violators = (catalogRows ?? []).filter((r) => {
+    const minAge = r.eligibility_rules?.min_age;
+    const tags = r.eligibility_rules?.required_situations ?? [];
+    return minAge != null && tags.includes("senior");
+  });
   expectStructural(
-    bad.length === 0,
-    `Every Cash Assistance row has 'low_income' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+    violators.length === 0,
+    `Rows with min_age set should NOT have 'senior' in required_situations${violators.length > 0 ? ` — violators: [${violators.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 12: rows with min_age set should NOT have 'caregiver'
+// in required_situations. Audit (2026-05) confirmed no caregiver-primary
+// rows exist anywhere in the catalog — caregiver only co-occurs with
+// senior + min_age, which means the dedicated min_age field is source
+// of truth. If a future row genuinely needs to gate on caregiver
+// regardless of age, we'd need to model it without min_age set, which
+// would skip this invariant correctly.
+{
+  const violators = (catalogRows ?? []).filter((r) => {
+    const minAge = r.eligibility_rules?.min_age;
+    const tags = r.eligibility_rules?.required_situations ?? [];
+    return minAge != null && tags.includes("caregiver");
+  });
+  expectStructural(
+    violators.length === 0,
+    `Rows with min_age set should NOT have 'caregiver' in required_situations${violators.length > 0 ? ` — violators: [${violators.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 13: rows with any income cap set should NOT have
+// 'low_income' in required_situations. The cap is source of truth for
+// means-testing; the tag was both redundant and harmful via OR semantics
+// (e.g., letting childless low-income adults match TANF). Two rows in
+// the catalog (california-food-bank-network-emergency-food and
+// california-rental-assistance) legitimately use low_income WITHOUT a
+// cap — this invariant correctly skips them.
+{
+  const violators = (catalogRows ?? []).filter((r) => {
+    const er = r.eligibility_rules ?? {};
+    const hasCap = er.max_monthly_income != null || er.max_income_percent_fpl != null;
+    const tags = er.required_situations ?? [];
+    return hasCap && tags.includes("low_income");
+  });
+  expectStructural(
+    violators.length === 0,
+    `Rows with income cap set should NOT have 'low_income' in required_situations${violators.length > 0 ? ` — violators: [${violators.map((r) => r.slug).join(", ")}]` : ""}`,
   );
 }
 
@@ -843,6 +899,21 @@ expect(has("TX-bkt-0_500-wc",  "Texas TANF (Temporary Assistance for Needy Famil
        "TX TANF matches bucket=0_500 with-children family ($500 ≤ $800 cap)");
 expect(has("VA-bkt-0_500-wc",  "Virginia Initiative for Education and Work (VIEW/TANF)"),
        "VA VIEW matches bucket=0_500 with-children family ($500 ≤ $900 cap)");
+
+// ── Tag-proxy regression checks (migration_038) ─────────────────────────
+// Senior tag was a proxy for min_age. Pre-migration_038, age=70 with no
+// senior tag matched 0 senior rows; post-migration the row gates purely
+// on min_age and matches anyone ≥ 60.
+expect(has("AR-70-notag", "Arkansas Aging, Adult, and Behavioral Health Services"),
+       "AR Aging matches age=70 with NO senior tag (the senior-proxy fix)");
+
+// Low-income tag was a proxy for income cap. Worse than redundant: the
+// OR-semantics let a childless low-income adult match TANF. Pre-migration
+// this watchpoint would FAIL because TX TANF gated [with_children, low_income]
+// matched on the low_income tag alone. Post-migration TX TANF requires
+// with_children, so the childless profile is correctly excluded.
+expect(!has("TX-30-low-nokids", "Texas TANF (Temporary Assistance for Needy Families)"),
+       "TX TANF excluded for childless adult with sit=[low_income] (the low_income false-positive fix)");
 
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
