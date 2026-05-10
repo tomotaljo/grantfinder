@@ -190,8 +190,11 @@ Walk every Medicaid row in the catalog and confirm:
 - **Expansion status** — has any non-expansion state expanded? Has any
   expansion state contracted? Adjust the row's required_situations gate.
   (At time of writing: FL, AL, GA, MS, KS, TN, WY, SC are non-expansion;
-  everyone else in the catalog is expansion. NC expanded December 2023 —
-  the row carries an `important_notes` flag to that effect for re-verification.)
+  Wisconsin is a hybrid case via BadgerCare 1115 waiver capped at 100%
+  FPL for adults; everyone else in the catalog is full ACA expansion.
+  Recent expansions with `important_notes` flags for annual re-verification:
+  NC — December 2023; MO — 2021-2022 via Amendment 2;
+  SD — July 2023 via Constitutional Amendment D.)
 - **Indiana HIP work requirement status** — Healthy Indiana Plan has had
   on-again/off-again work requirements over the years; current row
   assumes none. Re-check.

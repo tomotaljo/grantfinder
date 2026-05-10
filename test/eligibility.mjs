@@ -202,6 +202,25 @@ const profiles = [
   { id: "VT-22-6k",    desc: "VT, 22, $6000/mo, []",                           state: "VT", age: 22, income: 6000, sit: [] },
   { id: "VT-low-fam",  desc: "VT, 25, $1300/mo, [single_parent, low_income]",  state: "VT", age: 25, income: 1300, sit: ["single_parent", "low_income"] },
   { id: "VT-70-sen",   desc: "VT, 70, $1000/mo, [senior]",                     state: "VT", age: 70, income: 1000, sit: ["senior"] },
+
+  // VA/WI/WV/DC coverage (added with migration_035) — final state batch.
+  // Wisconsin is a unique BadgerCare case (100% FPL Medicaid waiver, not
+  // the ACA 138% expansion). DC has unusually generous Medicaid (we model
+  // at the conservative 138% baseline).
+  { id: "VA-22-6k",    desc: "VA, 22, $6000/mo, []",                           state: "VA", age: 22, income: 6000, sit: [] },
+  { id: "VA-low-fam",  desc: "VA, 25, $800/mo, [single_parent, low_income]",   state: "VA", age: 25, income: 800,  sit: ["single_parent", "low_income"] },
+  { id: "VA-70-sen",   desc: "VA, 70, $1000/mo, [senior]",                     state: "VA", age: 70, income: 1000, sit: ["senior"] },
+  { id: "WI-22-6k",    desc: "WI, 22, $6000/mo, []",                           state: "WI", age: 22, income: 6000, sit: [] },
+  { id: "WI-low-fam",  desc: "WI, 25, $1000/mo, [single_parent, low_income]",  state: "WI", age: 25, income: 1000, sit: ["single_parent", "low_income"] },
+  { id: "WI-22-1k",    desc: "WI, 22, $1000/mo, [], hh=1 (under 100% FPL)",    state: "WI", age: 22, income: 1000, sit: [], hh: 1 },
+  { id: "WI-22-1.6k",  desc: "WI, 22, $1600/mo, [], hh=1 (in 100-138% gap)",   state: "WI", age: 22, income: 1600, sit: [], hh: 1 },
+  { id: "WI-70-sen",   desc: "WI, 70, $1000/mo, [senior]",                     state: "WI", age: 70, income: 1000, sit: ["senior"] },
+  { id: "WV-22-6k",    desc: "WV, 22, $6000/mo, []",                           state: "WV", age: 22, income: 6000, sit: [] },
+  { id: "WV-low-fam",  desc: "WV, 25, $900/mo, [single_parent, low_income]",   state: "WV", age: 25, income: 900,  sit: ["single_parent", "low_income"] },
+  { id: "WV-70-sen",   desc: "WV, 70, $1000/mo, [senior]",                     state: "WV", age: 70, income: 1000, sit: ["senior"] },
+  { id: "DC-22-6k",    desc: "DC, 22, $6000/mo, []",                           state: "DC", age: 22, income: 6000, sit: [] },
+  { id: "DC-low-fam",  desc: "DC, 25, $1200/mo, [single_parent, low_income]",  state: "DC", age: 25, income: 1200, sit: ["single_parent", "low_income"] },
+  { id: "DC-70-sen",   desc: "DC, 70, $1000/mo, [senior]",                     state: "DC", age: 70, income: 1000, sit: ["senior"] },
 ];
 
 const all = {};
@@ -323,7 +342,7 @@ expect(!hhProbe1.data.some((p) => p.name === SNAP_AL),                          
 // ── NV/AL/AK/AZ coverage (migration_022) ────────────────────────────────
 
 // Working-age $6k profiles: small result sets, no senior/disability leaks.
-for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH", "RI", "SD", "UT", "VT"]) {
+for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH", "RI", "SD", "UT", "VT", "VA", "WI", "WV", "DC"]) {
   const rows = all[`${code}-22-6k`];
   expect(rows.length <= 4,                                                           `${code}-22-6k row count ≤ 4 (got ${rows.length})`);
   expect(!rows.some((p) => sit(p).includes("senior") || sit(p).includes("disability")),
@@ -391,6 +410,10 @@ expect(has("RI-70-sen", "Rhode Island Office of Healthy Aging (OHA)"),          
 expect(has("SD-70-sen", "South Dakota Adult Services and Aging"),                   "SD Adult Services & Aging matches SD 70yo with senior tag");
 expect(has("UT-70-sen", "Utah Aging and Adult Services"),                           "UT Aging matches UT 70yo with senior tag");
 expect(has("VT-70-sen", "Vermont Department of Disabilities, Aging and Independent Living (DAIL)"), "VT DAIL matches VT 70yo with senior tag");
+expect(has("VA-70-sen", "Virginia Department for Aging and Rehabilitative Services (DARS)"), "VA DARS matches VA 70yo with senior tag");
+expect(has("WI-70-sen", "Wisconsin Bureau of Aging and Disability Resources (BADR)"),       "WI BADR matches WI 70yo with senior tag");
+expect(has("WV-70-sen", "West Virginia Bureau of Senior Services"),                          "WV Aging matches WV 70yo with senior tag");
+expect(has("DC-70-sen", "DC Department of Aging and Community Living (DACL)"),               "DC DACL matches DC 70yo with senior tag");
 
 // Hawaii Med-QUEST is an expansion-state Medicaid (no required tags) — must
 // match a low-income family.
@@ -486,6 +509,18 @@ expect(has("VT-low-fam", "Vermont Medicaid (Green Mountain Care)"),             
 expect(has("SD-70-sen", "South Dakota Medicaid"),                                    "SD Medicaid matches SD 70yo (expansion state, no tag gate)");
 expect(has("SD-70-sen", "Medicare Extra Help - Part D Low Income Subsidy"),          "SD senior also matches federal Medicare Extra Help");
 
+// migration_035 expansion states (VA/WV/DC): no tag gate on Medicaid.
+expect(has("VA-low-fam", "Virginia Medicaid (Cover Virginia)"),                      "VA Medicaid matches low-income family");
+expect(has("WV-low-fam", "West Virginia Medicaid"),                                  "WV Medicaid matches low-income family");
+expect(has("DC-low-fam", "DC Medicaid (DC Healthy Families / Healthcare Alliance)"), "DC Medicaid matches low-income family");
+
+// Wisconsin BadgerCare unique case — adults 0-100% FPL qualify (childless ungated),
+// adults 100-138% FPL fall in the coverage gap. HH=1 100% FPL = $1330; the boundary
+// sits between WI-22-1k ($1000, under 100%) and WI-22-1.6k ($1600, over 100%).
+expect(has("WI-22-1k", "BadgerCare Plus (Wisconsin Medicaid)"),                      "WI BadgerCare matches childless adult under 100% FPL");
+expect(!has("WI-22-1.6k", "BadgerCare Plus (Wisconsin Medicaid)"),                   "WI BadgerCare excludes childless adult in 100-138% FPL gap");
+expect(has("WI-low-fam", "BadgerCare Plus (Wisconsin Medicaid)"),                    "WI BadgerCare matches single-parent low-income family");
+
 // Ohio HEAP at 175% FPL — verify the boundary. HH=2 cap = (1803 * 1.75)::int = 3155.
 // Test profile: HH=2 user at $3000 should match (within 175% but over 150%).
 const ohHeap = await sb.rpc("get_eligible_programs", { p_state: "OH", p_monthly_income: 3000, p_age: 30, p_situation: [], p_household_size: 2 });
@@ -508,7 +543,7 @@ const ilLiheapProbe = await sb.rpc("get_eligible_programs", {
 expect(ilLiheapProbe.data?.some((p) => p.name === "Illinois LIHEAP"),                 "IL LIHEAP matches HH=2 user at $3000 (200% FPL cap is more generous than federal 150%)");
 
 // Each new state's 211 row is no-constraint — should match every profile in the state
-for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH", "RI", "SD", "UT", "VT"]) {
+for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", "CO", "CT", "DE", "ID", "IN", "IA", "KS", "KY", "LA", "WA", "MT", "NE", "OH", "OK", "TN", "WY", "MA", "PA", "NJ", "NC", "ME", "MD", "ND", "OR", "SC", "MN", "MO", "NM", "NH", "RI", "SD", "UT", "VT", "VA", "WI", "WV", "DC"]) {
   const stateNames = {
     NV: "Nevada 211", AL: "Alabama 211", AK: "Alaska 211", AZ: "Arizona 211",
     HI: "Hawaii 211 (Aloha United Way)",
@@ -528,6 +563,8 @@ for (const code of ["NV", "AL", "AK", "AZ", "HI", "IL", "AR", "GA", "MI", "MS", 
     NM: "New Mexico 211", NH: "New Hampshire 211",
     RI: "Rhode Island 211 (United Way)", SD: "South Dakota 211 (Helpline Center)",
     UT: "Utah 211 (United Way)", VT: "Vermont 211",
+    VA: "Virginia 211", WI: "Wisconsin 211", WV: "West Virginia 211",
+    DC: "DC 211 (Answers, Please!)",
   };
   const name = stateNames[code];
   expect(has(`${code}-22-6k`, name) && has(`${code}-low-fam`, name) && has(`${code}-70-sen`, name),
