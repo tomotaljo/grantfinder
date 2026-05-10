@@ -21,9 +21,10 @@ interface Props {
   onChange: (v: string[]) => void;
   onNext: () => void;
   onBack: () => void;
+  householdSize: string;
 }
 
-export default function Step6Situation({ values, onChange, onNext, onBack }: Props) {
+export default function Step6Situation({ values, onChange, onNext, onBack, householdSize }: Props) {
   const toggle = (v: string) => {
     onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
   };
@@ -38,6 +39,23 @@ export default function Step6Situation({ values, onChange, onNext, onBack }: Pro
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {OPTIONS.map((opt) => {
+          // with_children is contradictory with HH=1. Render a non-interactive
+          // notice in place of the checkbox so users see the option exists
+          // and learn that children count toward household size.
+          if (opt.value === "with_children" && householdSize === "1") {
+            return (
+              <div
+                key={opt.value}
+                className="flex items-center gap-3 py-3 px-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-left"
+                aria-disabled="true"
+              >
+                <span className="text-xs leading-snug text-gray-500">
+                  Household size must include children. Go back to update if you have a child.
+                </span>
+              </div>
+            );
+          }
+
           const checked = values.includes(opt.value);
           return (
             <button

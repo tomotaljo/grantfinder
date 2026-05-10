@@ -25,6 +25,11 @@ export default function Step2ApplyingFor({ value, onChange, onNext, onBack }: Pr
       onBack={onBack}
       nextDisabled={!value}
     >
+      <p className="text-xs text-gray-500 leading-relaxed mb-4 -mt-4">
+        Note: This is who you&rsquo;re applying for, not your household size.
+        Household size is everyone who lives with you and shares income —
+        you&rsquo;ll set that separately.
+      </p>
       <div className="grid grid-cols-2 gap-3">
         {OPTIONS.map((opt) => (
           <button

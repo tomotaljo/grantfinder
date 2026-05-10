@@ -3,7 +3,8 @@
 import QuizCard from "../QuizCard";
 
 const RANGES = [
-  { value: "0_1000", label: "$0 – $1,000" },
+  { value: "0_500", label: "$0 – $500" },
+  { value: "501_1000", label: "$501 – $1,000" },
   { value: "1001_2000", label: "$1,001 – $2,000" },
   { value: "2001_3000", label: "$2,001 – $3,000" },
   { value: "3001_4500", label: "$3,001 – $4,500" },

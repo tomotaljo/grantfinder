@@ -49,6 +49,15 @@ export default function Quiz() {
           (s) => (s === "single_parent" ? "with_children" : s),
         ))];
       }
+      // Backwards compat (income-bucket fix, 2026-05): the "0_1000" bucket
+      // was split into "0_500" + "501_1000". Old sessions land in "501_1000"
+      // (the conservative upper-bound choice).
+      if (parsed.income === "0_1000") parsed.income = "501_1000";
+      // Strip with_children if householdSize is 1 — these are contradictory
+      // inputs (you can't have a child in a 1-person household).
+      if (parsed.householdSize === "1" && Array.isArray(parsed.situation)) {
+        parsed.situation = parsed.situation.filter((s) => s !== "with_children");
+      }
       setAnswers(parsed);
       setDone(true);
     } catch {}
@@ -65,6 +74,17 @@ export default function Quiz() {
 
   const set = <K extends keyof Answers>(key: K) =>
     (val: Answers[K]) => setAnswers((a) => ({ ...a, [key]: val }));
+
+  // Custom handler: when householdSize changes to "1", strip with_children
+  // from situation since those inputs are contradictory. Covers the
+  // back-navigation case where the user picked with_children at Step 6,
+  // went back to Step 4, and changed HH to 1.
+  const setHouseholdSize = (val: string) =>
+    setAnswers((a) => ({
+      ...a,
+      householdSize: val,
+      situation: val === "1" ? a.situation.filter((s) => s !== "with_children") : a.situation,
+    }));
 
   if (done) {
     return (
@@ -95,13 +115,13 @@ export default function Quiz() {
           <Step3AgeRange value={answers.ageRange} onChange={set("ageRange")} onNext={next} onBack={back} />
         )}
         {step === 4 && (
-          <Step4HouseholdSize value={answers.householdSize} onChange={set("householdSize")} onNext={next} onBack={back} />
+          <Step4HouseholdSize value={answers.householdSize} onChange={setHouseholdSize} onNext={next} onBack={back} />
         )}
         {step === 5 && (
           <Step5Income value={answers.income} onChange={set("income")} onNext={next} onBack={back} />
         )}
         {step === 6 && (
-          <Step6Situation values={answers.situation} onChange={set("situation")} onNext={next} onBack={back} />
+          <Step6Situation values={answers.situation} onChange={set("situation")} onNext={next} onBack={back} householdSize={answers.householdSize} />
         )}
         {step === 7 && (
           <Step7Enrolled values={answers.enrolled} onChange={set("enrolled")} onNext={next} onBack={back} />

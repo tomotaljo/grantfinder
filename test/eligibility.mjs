@@ -237,6 +237,58 @@ for (const p of profiles) {
   all[p.id] = data ?? [];
 }
 
+// ── Bucket-mapping profiles ────────────────────────────────────────────
+// Until 2026-05 the harness tested the RPC in isolation by passing exact
+// dollar amounts as p_monthly_income, bypassing lib/supabase.ts's
+// incomeToMonthlyDollars() bucket → upper-bound translation. That blind
+// spot let the "0_1000" → 1000 bug ship: 17+ states with TANF flat caps
+// ≤ $1000 became unreachable via the live quiz, while the harness stayed
+// green. These profiles exercise the full quiz-to-RPC chain so any
+// future regression of that shape gets caught.
+//
+// MUST MATCH lib/supabase.ts:incomeToMonthlyDollars exactly. If you
+// change one, change both.
+const incomeBuckets = {
+  "0_500":     500,
+  "501_1000":  1000,
+  "1001_2000": 2000,
+  "2001_3000": 3000,
+  "3001_4500": 4500,
+  "4501_6000": 6000,
+  "6001_plus": 999999,
+};
+
+const bucketProfiles = [
+  // Floor (LA/MS TANF cap $600): "0_500" should match TANF; "501_1000" should not.
+  { id: "LA-bkt-0_500-wc",    desc: "LA HH=2 bucket=0_500 [with_children,low_income] (LA FITAP $600 cap)",  state: "LA", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
+  { id: "LA-bkt-501_1k-wc",   desc: "LA HH=2 bucket=501_1000 [with_children,low_income] (over $600 cap)",   state: "LA", age: 30, hh: 2, bucket: "501_1000", sit: ["with_children", "low_income"] },
+  { id: "MS-bkt-0_500-wc",    desc: "MS HH=2 bucket=0_500 [with_children,low_income] (MS TANF $600 cap)",    state: "MS", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
+  // $700 tier (AR/AL/etc.).
+  { id: "AR-bkt-0_500-wc",    desc: "AR HH=2 bucket=0_500 [with_children,low_income] (AR TEA $700 cap)",     state: "AR", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
+  { id: "AR-bkt-501_1k-wc",   desc: "AR HH=2 bucket=501_1000 [with_children,low_income] (over $700 cap)",    state: "AR", age: 30, hh: 2, bucket: "501_1000", sit: ["with_children", "low_income"] },
+  // $800 tier (TX, TN).
+  { id: "TX-bkt-0_500-wc",    desc: "TX HH=2 bucket=0_500 [with_children,low_income] (TX TANF $800 cap)",    state: "TX", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
+  // $900 tier (VA).
+  { id: "VA-bkt-0_500-wc",    desc: "VA HH=2 bucket=0_500 [with_children,low_income] (VA TANF $900 cap)",    state: "VA", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
+];
+
+for (const p of bucketProfiles) {
+  const dollars = incomeBuckets[p.bucket];
+  if (dollars == null) {
+    console.error(`profile ${p.id}: unknown bucket ${p.bucket}`);
+    process.exit(1);
+  }
+  const { data, error } = await sb.rpc("get_eligible_programs", {
+    p_state: p.state, p_monthly_income: dollars, p_age: p.age,
+    p_situation: p.sit, p_household_size: p.hh,
+  });
+  if (error) {
+    console.error(`profile ${p.id}: ERROR ${error.message}`);
+    process.exit(1);
+  }
+  all[p.id] = data ?? [];
+}
+
 const failures = [];
 const passes = [];
 
@@ -594,10 +646,34 @@ expect(!has("TX-30-2.5k-nokids", TX_CHIP),                                      
 expect(has("TX-25-2k-wc", TX_CHIP),                                                 "TX CHIP matches HH=2 user with children at $2000/mo");
 expect(has("TX-30-4.5k-wc", TX_CHIP),                                               "TX CHIP matches HH=4 user with children at $4500/mo");
 
+// ── Income-bucket regression (2026-05) ──────────────────────────────────
+// Pre-fix: lib/supabase.ts mapped "0_1000" → 1000, which exceeded TANF
+// flat caps of $600-$900 in 17+ states. The lowest income bucket was
+// unable to land users in TANF anywhere. Post-fix: split into "0_500" →
+// 500 + "501_1000" → 1000, so users at the bottom end of the income
+// distribution can clear the lowest-cap states.
+expect(has("LA-bkt-0_500-wc",  "Louisiana Family Independence Temporary Assistance Program (FITAP)"),
+       "LA FITAP matches bucket=0_500 with-children family ($500 ≤ $600 cap)");
+expect(!has("LA-bkt-501_1k-wc", "Louisiana Family Independence Temporary Assistance Program (FITAP)"),
+       "LA FITAP excluded for bucket=501_1000 with-children family ($1000 > $600 cap)");
+expect(has("MS-bkt-0_500-wc",  "Mississippi TANF"),
+       "MS TANF matches bucket=0_500 with-children family ($500 ≤ $600 cap)");
+expect(has("AR-bkt-0_500-wc",  "Arkansas Transitional Employment Assistance (TEA)"),
+       "AR TEA matches bucket=0_500 with-children family ($500 ≤ $700 cap)");
+expect(!has("AR-bkt-501_1k-wc", "Arkansas Transitional Employment Assistance (TEA)"),
+       "AR TEA excluded for bucket=501_1000 with-children family ($1000 > $700 cap)");
+expect(has("TX-bkt-0_500-wc",  "Texas TANF (Temporary Assistance for Needy Families)"),
+       "TX TANF matches bucket=0_500 with-children family ($500 ≤ $800 cap)");
+expect(has("VA-bkt-0_500-wc",  "Virginia Initiative for Education and Work (VIEW/TANF)"),
+       "VA VIEW matches bucket=0_500 with-children family ($500 ≤ $900 cap)");
+
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
 for (const p of profiles) {
   console.log(`  ${p.id.padEnd(12)} ${all[p.id].length.toString().padStart(3)} rows  (${p.desc})`);
+}
+for (const p of bucketProfiles) {
+  console.log(`  ${p.id.padEnd(20)} ${all[p.id].length.toString().padStart(3)} rows  (${p.desc})`);
 }
 
 console.log("\n=== Watchpoints ===");

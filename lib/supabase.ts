@@ -49,10 +49,19 @@ const STATE_ABBR: Record<string, string> = {
   "West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","Washington D.C.":"DC",
 };
 
-// Map quiz income range strings to an upper-bound monthly dollar value
+// Map quiz income range strings to an upper-bound monthly dollar value.
+// Conservative-upper-bound semantics — a user picking "$0–$500" gets
+// evaluated as if they earn $500/mo. The "0_500" bucket exists so users
+// with truly low income can land below state TANF flat caps (LA/MS at
+// $600, AR/AL/etc. at $700-$800). Pre-2026-05 the lowest bucket was
+// "0_1000" → 1000 which overshot TANF caps in 17+ states.
+//
+// The harness in test/eligibility.mjs replicates this map; keep them
+// in sync.
 function incomeToMonthlyDollars(range: string): number {
   const map: Record<string, number> = {
-    "0_1000":    1000,
+    "0_500":     500,
+    "501_1000":  1000,
     "1001_2000": 2000,
     "2001_3000": 3000,
     "3001_4500": 4500,
