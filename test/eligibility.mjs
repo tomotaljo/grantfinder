@@ -299,6 +299,183 @@ function expect(condition, label) {
 const has = (id, name) => (all[id] ?? []).some((p) => p.name === name);
 const sit = (p) => p.eligibility_rules?.required_situations ?? [];
 
+// ── Catalog-integrity invariants ────────────────────────────────────────
+// Structural checks on the catalog itself, separate from per-state
+// eligibility-result behavior. These run first so a structural gap
+// (e.g., CA missing CalWORKs in 2026-05) surfaces at the top of the
+// report rather than getting buried in downstream behavior failures.
+//
+// Added 2026-05 after a CA-specific gap shipped silently — CA had no
+// with_children-gated row at all, but every per-state behavior watchpoint
+// passed because nothing was specifically asserting the row's existence.
+// Lesson: anything that should be true of every state needs a structural
+// invariant, not just per-state result watchpoints.
+const ALL_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+  "VA","WA","WV","WI","WY","DC",
+];
+const NON_EXPANSION_STATES = ["FL","AL","GA","MS","KS","TN","WY","SC"];
+const REQUIRED_CATEGORIES = [
+  "Health Insurance",
+  "Food Assistance",
+  "Cash Assistance",
+  "Utility Assistance",
+  "Income Assistance",
+  "Veteran Services",
+  "Senior Services",
+  "Information & Referral",
+];
+
+const structuralFailures = [];
+const structuralPasses = [];
+function expectStructural(condition, label) {
+  (condition ? structuralPasses : structuralFailures).push(label);
+}
+
+const { data: catalogRows, error: catalogErr } = await sb
+  .from("programs")
+  .select("slug, name, category, scope, state, important_notes, eligibility_rules")
+  .eq("is_active", true)
+  .eq("scope", "state");
+if (catalogErr) {
+  console.error("structural fetch failed:", catalogErr.message);
+  process.exit(1);
+}
+const byState = {};
+for (const r of catalogRows ?? []) (byState[r.state] ??= []).push(r);
+
+// 8 category invariants — every state has ≥1 active row in each.
+for (const cat of REQUIRED_CATEGORIES) {
+  const missing = ALL_STATES.filter((s) => !(byState[s] ?? []).some((r) => r.category === cat));
+  expectStructural(
+    missing.length === 0,
+    `Every state has ≥1 active row in "${cat}"${missing.length > 0 ? ` — missing in [${missing.join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 1: every state has ≥1 row gated by with_children.
+{
+  const missing = ALL_STATES.filter((s) =>
+    !(byState[s] ?? []).some((r) => (r.eligibility_rules?.required_situations ?? []).includes("with_children")),
+  );
+  expectStructural(
+    missing.length === 0,
+    `Every state has ≥1 row gated by with_children${missing.length > 0 ? ` — missing in [${missing.join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 2: every non-expansion-state Medicaid row has important_notes.
+{
+  const failing = NON_EXPANSION_STATES.filter((s) => {
+    const med = (byState[s] ?? []).filter((r) => r.category === "Health Insurance" && /medicaid|tenncare|kancare|healthy connections/i.test(r.name));
+    return med.length === 0 || !med.some((r) => r.important_notes != null && r.important_notes !== "");
+  });
+  expectStructural(
+    failing.length === 0,
+    `Every non-expansion-state Medicaid row has important_notes${failing.length > 0 ? ` — failing: [${failing.join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 3: every Senior Services row has min_age ≥ 60.
+// Loosened from "=== 60" after structural check surfaced texas-ccad
+// (Texas Community Care for Aged and Disabled), which legitimately uses
+// min_age=65 because it's a Medicaid LTSS waiver tied to Medicare-eligible
+// age. Both 60 (Older Americans Act / AAA programs) and 65 (Medicaid
+// LTSS) are valid senior thresholds. The invariant's intent — make sure
+// senior-services rows actually require seniority — is preserved by ≥ 60.
+{
+  const seniorRows = (catalogRows ?? []).filter((r) => r.category === "Senior Services");
+  const bad = seniorRows.filter((r) => {
+    const minAge = r.eligibility_rules?.min_age;
+    return minAge == null || minAge < 60;
+  });
+  expectStructural(
+    bad.length === 0,
+    `Every Senior Services row has min_age ≥ 60${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 4: every WIC row has 'pregnant' or 'with_children'.
+{
+  const wicRows = (catalogRows ?? []).filter((r) => /\bwic\b/i.test(r.name) || /\bwic\b/i.test(r.slug));
+  const bad = wicRows.filter((r) => {
+    const tags = r.eligibility_rules?.required_situations ?? [];
+    return !(tags.includes("pregnant") || tags.includes("with_children"));
+  });
+  expectStructural(
+    bad.length === 0,
+    `Every WIC row has 'pregnant' or 'with_children' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 5: every Veteran Services row has 'veteran'.
+{
+  const vetRows = (catalogRows ?? []).filter((r) => r.category === "Veteran Services");
+  const bad = vetRows.filter((r) => !((r.eligibility_rules?.required_situations ?? []).includes("veteran")));
+  expectStructural(
+    bad.length === 0,
+    `Every Veteran Services row has 'veteran' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 6: every Cash Assistance row has BOTH with_children AND low_income.
+{
+  const cashRows = (catalogRows ?? []).filter((r) => r.category === "Cash Assistance");
+  const bad = cashRows.filter((r) => {
+    const tags = r.eligibility_rules?.required_situations ?? [];
+    return !(tags.includes("with_children") && tags.includes("low_income"));
+  });
+  expectStructural(
+    bad.length === 0,
+    `Every Cash Assistance row has BOTH with_children AND low_income${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 7: every Income Assistance (UI) row has 'unemployed'.
+{
+  const uiRows = (catalogRows ?? []).filter((r) => r.category === "Income Assistance");
+  const bad = uiRows.filter((r) => !((r.eligibility_rules?.required_situations ?? []).includes("unemployed")));
+  expectStructural(
+    bad.length === 0,
+    `Every Income Assistance row has 'unemployed' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 8: every 211 row has empty required_situations.
+{
+  const irrRows = (catalogRows ?? []).filter((r) => r.category === "Information & Referral");
+  const bad = irrRows.filter((r) => (r.eligibility_rules?.required_situations ?? []).length > 0);
+  expectStructural(
+    bad.length === 0,
+    `Every 211 row has empty required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 9: every state has exactly one state-scope 211 row.
+{
+  const violators = ALL_STATES.filter((s) => {
+    const count = (byState[s] ?? []).filter((r) => r.category === "Information & Referral").length;
+    return count !== 1;
+  });
+  expectStructural(
+    violators.length === 0,
+    `Every state has exactly one state-scope 211 row${violators.length > 0 ? ` — violators: [${violators.join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 10: every Cash Assistance row has 'low_income' (subset
+// of #6 but kept separate so the failure label is specific).
+{
+  const cashRows = (catalogRows ?? []).filter((r) => r.category === "Cash Assistance");
+  const bad = cashRows.filter((r) => !((r.eligibility_rules?.required_situations ?? []).includes("low_income")));
+  expectStructural(
+    bad.length === 0,
+    `Every Cash Assistance row has 'low_income' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
 // Headline counts and senior/disability leakage on the high-income, no-tags profiles.
 const ca22 = all["CA-22-6k"];
 const tx22 = all["TX-22-6k"];
@@ -676,13 +853,19 @@ for (const p of bucketProfiles) {
   console.log(`  ${p.id.padEnd(20)} ${all[p.id].length.toString().padStart(3)} rows  (${p.desc})`);
 }
 
-console.log("\n=== Watchpoints ===");
+console.log("\n=== Catalog-integrity invariants ===");
+for (const label of structuralPasses) console.log(`  ✓ ${label}`);
+for (const label of structuralFailures) console.log(`  ✗ ${label}`);
+
+console.log("\n=== Eligibility-result watchpoints ===");
 for (const label of passes) console.log(`  ✓ ${label}`);
 for (const label of failures) console.log(`  ✗ ${label}`);
 
-if (failures.length > 0) {
-  console.log(`\n${failures.length} watchpoint(s) failed.`);
+const totalFailures = failures.length + structuralFailures.length;
+const totalPasses = passes.length + structuralPasses.length;
+if (totalFailures > 0) {
+  console.log(`\n${totalFailures} watchpoint(s) failed (${structuralFailures.length} structural, ${failures.length} behavioral).`);
   process.exit(1);
 } else {
-  console.log(`\nAll ${passes.length} watchpoints passed.`);
+  console.log(`\nAll ${totalPasses} watchpoints passed (${structuralPasses.length} structural, ${passes.length} behavioral).`);
 }
