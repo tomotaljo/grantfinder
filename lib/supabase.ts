@@ -92,19 +92,37 @@ function householdSizeToInt(value: string): number {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
+// Auto-derive the 'senior' situation tag when ageRange === "65_plus".
+// Fixes the UX bug where a 70-year-old who didn't tick the "Senior citizen"
+// checkbox failed to match Medicare-style rows ([senior, disability]
+// OR-gated, no min_age) that legitimately keep the senior tag because
+// it's doing real OR-semantic work with disability. The 5 Medicare-style
+// rows tie eligibility to age 65+ OR disability, so 65 is the correct
+// auto-derive threshold (matches Medicare's actual rule).
+//
+// The harness in test/eligibility.mjs mirrors this logic; keep them in sync.
+function deriveSituation(situation: string[], ageRange: string): string[] {
+  const augmented = [...situation];
+  if (ageRange === "65_plus" && !augmented.includes("senior")) {
+    augmented.push("senior");
+  }
+  return augmented;
+}
+
 export async function fetchEligiblePrograms(answers: QuizAnswers): Promise<Program[]> {
   const stateAbbr = (STATE_ABBR[answers.state] ?? answers.state) || null;
   const monthlyIncome = incomeToMonthlyDollars(answers.income);
   const age = ageRangeToNumber(answers.ageRange);
   const householdSize = householdSizeToInt(answers.householdSize);
+  const situation = deriveSituation(answers.situation, answers.ageRange);
 
-  console.log("[RPC] params →", { p_state: stateAbbr, p_monthly_income: monthlyIncome, p_age: age, p_situation: answers.situation, p_household_size: householdSize });
+  console.log("[RPC] params →", { p_state: stateAbbr, p_monthly_income: monthlyIncome, p_age: age, p_situation: situation, p_household_size: householdSize });
 
   const { data, error } = await supabase.rpc("get_eligible_programs", {
     p_state:          stateAbbr,
     p_monthly_income: monthlyIncome,
     p_age:            age,
-    p_situation:      answers.situation,
+    p_situation:      situation,
     p_household_size: householdSize,
   });
 

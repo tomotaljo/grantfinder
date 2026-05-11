@@ -243,17 +243,16 @@ for (const p of profiles) {
   all[p.id] = data ?? [];
 }
 
-// ── Bucket-mapping profiles ────────────────────────────────────────────
-// Until 2026-05 the harness tested the RPC in isolation by passing exact
-// dollar amounts as p_monthly_income, bypassing lib/supabase.ts's
-// incomeToMonthlyDollars() bucket → upper-bound translation. That blind
-// spot let the "0_1000" → 1000 bug ship: 17+ states with TANF flat caps
-// ≤ $1000 became unreachable via the live quiz, while the harness stayed
-// green. These profiles exercise the full quiz-to-RPC chain so any
-// future regression of that shape gets caught.
+// ── Lib-mapped profiles ────────────────────────────────────────────────
+// Profiles that exercise the full quiz-to-RPC transformation chain in
+// lib/supabase.ts:fetchEligiblePrograms — not just the RPC in isolation.
+// Until 2026-05 the harness passed exact dollar amounts as p_monthly_income
+// directly to the RPC, bypassing both the income-bucket mapping AND any
+// situation auto-derivation. That blind spot let the "0_1000" → 1000 bug
+// ship in 17+ states while the harness stayed green.
 //
-// MUST MATCH lib/supabase.ts:incomeToMonthlyDollars exactly. If you
-// change one, change both.
+// MUST MATCH lib/supabase.ts. If you change incomeBuckets or
+// deriveSituation here, change the corresponding code there.
 const incomeBuckets = {
   "0_500":     500,
   "501_1000":  1000,
@@ -264,7 +263,16 @@ const incomeBuckets = {
   "6001_plus": 999999,
 };
 
-const bucketProfiles = [
+function deriveSituation(situation, ageRange) {
+  const augmented = [...(situation ?? [])];
+  if (ageRange === "65_plus" && !augmented.includes("senior")) {
+    augmented.push("senior");
+  }
+  return augmented;
+}
+
+const libMappedProfiles = [
+  // Income-bucket regression coverage (2026-05).
   // Floor (LA/MS TANF cap $600): "0_500" should match TANF; "501_1000" should not.
   { id: "LA-bkt-0_500-wc",    desc: "LA HH=2 bucket=0_500 [with_children,low_income] (LA FITAP $600 cap)",  state: "LA", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
   { id: "LA-bkt-501_1k-wc",   desc: "LA HH=2 bucket=501_1000 [with_children,low_income] (over $600 cap)",   state: "LA", age: 30, hh: 2, bucket: "501_1000", sit: ["with_children", "low_income"] },
@@ -276,17 +284,25 @@ const bucketProfiles = [
   { id: "TX-bkt-0_500-wc",    desc: "TX HH=2 bucket=0_500 [with_children,low_income] (TX TANF $800 cap)",    state: "TX", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
   // $900 tier (VA).
   { id: "VA-bkt-0_500-wc",    desc: "VA HH=2 bucket=0_500 [with_children,low_income] (VA TANF $900 cap)",    state: "VA", age: 30, hh: 2, bucket: "0_500",    sit: ["with_children", "low_income"] },
+
+  // Senior auto-derive coverage (migration_039). The lib-mapper should
+  // inject 'senior' into the situation when ageRange=65_plus, so a 70yo
+  // who didn't tick the senior checkbox still matches Medicare-style
+  // rows. Direct-income profile (no bucket), but lib-mapped so the
+  // situation-augmentation logic gets exercised.
+  { id: "fed-65plus-no-tag",  desc: "fed, 70 (ageRange=65_plus), $1000/mo, [], hh=1 — auto-derive senior",   state: "AR", age: 70, hh: 1, income: 1000, ageRange: "65_plus", sit: [] },
 ];
 
-for (const p of bucketProfiles) {
-  const dollars = incomeBuckets[p.bucket];
+for (const p of libMappedProfiles) {
+  const dollars = p.bucket != null ? incomeBuckets[p.bucket] : p.income;
   if (dollars == null) {
-    console.error(`profile ${p.id}: unknown bucket ${p.bucket}`);
+    console.error(`profile ${p.id}: missing bucket and income`);
     process.exit(1);
   }
+  const situation = deriveSituation(p.sit, p.ageRange);
   const { data, error } = await sb.rpc("get_eligible_programs", {
     p_state: p.state, p_monthly_income: dollars, p_age: p.age,
-    p_situation: p.sit, p_household_size: p.hh,
+    p_situation: situation, p_household_size: p.hh,
   });
   if (error) {
     console.error(`profile ${p.id}: ERROR ${error.message}`);
@@ -334,23 +350,35 @@ const REQUIRED_CATEGORIES = [
   "Information & Referral",
 ];
 
+// Quiz situation-tag option values. MUST MATCH app/components/steps/
+// Step6Situation.tsx OPTIONS exactly. Used by structural invariants 14 + 15
+// to catch dead-tag drift (quiz tag with no catalog row) or orphan-tag
+// drift (catalog tag with no quiz option).
+const QUIZ_SITUATION_TAGS = [
+  "unemployed", "veteran", "disability", "pregnant", "student",
+  "with_children", "senior", "homeless", "rural", "low_income", "caregiver",
+];
+
 const structuralFailures = [];
 const structuralPasses = [];
 function expectStructural(condition, label) {
   (condition ? structuralPasses : structuralFailures).push(label);
 }
 
+// Fetch ALL active rows (state + federal) for invariants 14/15 which need
+// to see federal-scope rows. Existing invariants filter to state-scope
+// where needed.
 const { data: catalogRows, error: catalogErr } = await sb
   .from("programs")
   .select("slug, name, category, scope, state, important_notes, eligibility_rules")
-  .eq("is_active", true)
-  .eq("scope", "state");
+  .eq("is_active", true);
 if (catalogErr) {
   console.error("structural fetch failed:", catalogErr.message);
   process.exit(1);
 }
+const stateRows = (catalogRows ?? []).filter((r) => r.scope === "state");
 const byState = {};
-for (const r of catalogRows ?? []) (byState[r.state] ??= []).push(r);
+for (const r of stateRows) (byState[r.state] ??= []).push(r);
 
 // 8 category invariants — every state has ≥1 active row in each.
 for (const cat of REQUIRED_CATEGORIES) {
@@ -416,13 +444,20 @@ for (const cat of REQUIRED_CATEGORIES) {
   );
 }
 
-// Tag-level invariant 5: every Veteran Services row has 'veteran'.
+// Tag-level invariant 5: every Veteran Services row has 'veteran' OR
+// 'caregiver' in required_situations. Veteran Services is an organizational
+// category — covers both veteran-facing programs and caregiver-of-veteran
+// programs (e.g., VA PCAFC, VA PGCSS added in migration_039). Loosened
+// from veteran-only after the federal caregiver-of-veteran rows shipped.
 {
   const vetRows = (catalogRows ?? []).filter((r) => r.category === "Veteran Services");
-  const bad = vetRows.filter((r) => !((r.eligibility_rules?.required_situations ?? []).includes("veteran")));
+  const bad = vetRows.filter((r) => {
+    const tags = r.eligibility_rules?.required_situations ?? [];
+    return !(tags.includes("veteran") || tags.includes("caregiver"));
+  });
   expectStructural(
     bad.length === 0,
-    `Every Veteran Services row has 'veteran' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
+    `Every Veteran Services row has 'veteran' or 'caregiver' in required_situations${bad.length > 0 ? ` — failing: [${bad.map((r) => r.slug).join(", ")}]` : ""}`,
   );
 }
 
@@ -529,6 +564,35 @@ for (const cat of REQUIRED_CATEGORIES) {
   expectStructural(
     violators.length === 0,
     `Rows with income cap set should NOT have 'low_income' in required_situations${violators.length > 0 ? ` — violators: [${violators.map((r) => r.slug).join(", ")}]` : ""}`,
+  );
+}
+
+// Tag-level invariant 14: every quiz situation tag should appear in ≥ 1
+// active row's required_situations. Catalog-completeness check — catches
+// the case where a quiz checkbox does nothing because no row uses the
+// tag (caregiver/rural were both at 0 active rows pre-migration_039; the
+// audit revealed that was catalog incompleteness, not tag obsolescence).
+{
+  const allTagsInCatalog = new Set();
+  for (const r of catalogRows ?? []) {
+    for (const t of r.eligibility_rules?.required_situations ?? []) {
+      allTagsInCatalog.add(t);
+    }
+  }
+  const missing = QUIZ_SITUATION_TAGS.filter((t) => !allTagsInCatalog.has(t));
+  expectStructural(
+    missing.length === 0,
+    `Every quiz situation tag appears in ≥1 active row${missing.length > 0 ? ` — missing: [${missing.join(", ")}]` : ""}`,
+  );
+
+  // Tag-level invariant 15: every required_situations tag in active rows
+  // should appear in the quiz. Orphan-tag check — catches rows that gate
+  // on a tag the quiz can't produce (e.g., a migration adds a row with
+  // tag "has_pet" that the user can never set). Inverse of #14.
+  const orphans = [...allTagsInCatalog].filter((t) => !QUIZ_SITUATION_TAGS.includes(t));
+  expectStructural(
+    orphans.length === 0,
+    `Every required_situations tag in active rows appears in the quiz${orphans.length > 0 ? ` — orphans: [${orphans.join(", ")}]` : ""}`,
   );
 }
 
@@ -915,13 +979,25 @@ expect(has("AR-70-notag", "Arkansas Aging, Adult, and Behavioral Health Services
 expect(!has("TX-30-low-nokids", "Texas TANF (Temporary Assistance for Needy Families)"),
        "TX TANF excluded for childless adult with sit=[low_income] (the low_income false-positive fix)");
 
+// ── Senior auto-derive (migration_039) ──────────────────────────────────
+// lib/supabase.ts:fetchEligiblePrograms injects 'senior' into the
+// situation array when ageRange === "65_plus", so a user who selects
+// the 65+ age bucket but doesn't tick the Senior checkbox still matches
+// Medicare-style rows ([senior, disability] OR-gated). The harness mirrors
+// this transformation via deriveSituation() — these watchpoints validate
+// the catalog side fires correctly when senior is auto-derived.
+expect(has("fed-65plus-no-tag", "Medicare Extra Help - Part D Low Income Subsidy"),
+       "Medicare Extra Help fires for age=70 (ageRange=65_plus) with no situation tags (senior auto-derive)");
+expect(has("fed-65plus-no-tag", "Medicare Savings Program"),
+       "Medicare Savings Program fires for age=70 (ageRange=65_plus) with no situation tags (senior auto-derive)");
+
 // ── Report ──────────────────────────────────────────────────────────────
 console.log("\n=== Profile row counts ===");
 for (const p of profiles) {
   console.log(`  ${p.id.padEnd(12)} ${all[p.id].length.toString().padStart(3)} rows  (${p.desc})`);
 }
-for (const p of bucketProfiles) {
-  console.log(`  ${p.id.padEnd(20)} ${all[p.id].length.toString().padStart(3)} rows  (${p.desc})`);
+for (const p of libMappedProfiles) {
+  console.log(`  ${p.id.padEnd(22)} ${all[p.id].length.toString().padStart(3)} rows  (${p.desc})`);
 }
 
 console.log("\n=== Catalog-integrity invariants ===");
